@@ -97,18 +97,27 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {recommendations.map((rec, idx) => (
-              <RecommendationCard
-                key={`${rec.item.type}_${rec.item.id}`}
-                rec={rec}
-                isFavorite={isFavorite(rec.item)}
-                onToggleFavorite={() => toggleFavorite(rec.item)}
-                onAddToPlan={() => openAdd(rec.item)}
-                animationDelay={Math.min(idx * 50, 350)}
-              />
-            ))}
-          </div>
+          {recommendations.length === 0 ? (
+            <div className="rounded-2xl bg-card/80 p-6 ring-1 ring-border shadow-crisp animate-fade-up">
+              <div className="font-display text-lg tracking-tight text-fg">Nenhuma sugestão nesta categoria</div>
+              <div className="mt-1 text-sm text-muted">
+                Tente outra aba ou ajuste suas preferências no perfil.
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {recommendations.map((rec, idx) => (
+                <RecommendationCard
+                  key={`${rec.item.type}_${rec.item.id}`}
+                  rec={rec}
+                  isFavorite={isFavorite(rec.item)}
+                  onToggleFavorite={() => toggleFavorite(rec.item)}
+                  onAddToPlan={() => openAdd(rec.item)}
+                  animationDelay={Math.min(idx * 50, 350)}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 

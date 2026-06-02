@@ -102,10 +102,20 @@ export default function PlanPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={openAddFavorite} disabled={favoriteItems.length === 0}>
+          <Button
+            variant="secondary"
+            onClick={openAddFavorite}
+            disabled={favoriteItems.length === 0}
+            title={favoriteItems.length === 0 ? "Favorite itens no Painel ou Receitas para adicioná-los aqui" : undefined}
+          >
             Adicionar favorito
           </Button>
-          <Button variant="secondary" onClick={generateWeek} disabled={!profile}>
+          <Button
+            variant="secondary"
+            onClick={generateWeek}
+            disabled={!profile}
+            title={!profile ? "Crie seu perfil primeiro para gerar uma semana automática" : undefined}
+          >
             Gerar semana
           </Button>
           <Button variant="danger" onClick={clearPlan} disabled={plan.length === 0}>
@@ -113,6 +123,15 @@ export default function PlanPage() {
           </Button>
         </div>
       </div>
+
+      {!profile && (
+        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up flex items-center justify-between gap-4">
+          <div className="text-sm text-muted">Crie seu perfil para desbloquear "Gerar semana" e recomendações personalizadas.</div>
+          <a href="#/perfil" className="shrink-0 inline-flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02]">
+            Criar perfil
+          </a>
+        </div>
+      )}
 
       <div className="grid gap-4">
         {weekDays.map((d, idx) => {
