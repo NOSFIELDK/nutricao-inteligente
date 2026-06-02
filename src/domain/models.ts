@@ -38,6 +38,11 @@ export type CatalogTag =
   | "ironRich"
   | "calciumRich";
 
+export type IngredientNote = {
+  ingredient: string;
+  benefit: string;
+};
+
 export type Recipe = {
   id: string;
   type: "recipe";
@@ -53,6 +58,17 @@ export type Recipe = {
   carbsG: number;
   fatG: number;
   fiberG: number;
+  ingredientNotes?: IngredientNote[];
+};
+
+export type ReminderInterval = 30 | 60 | 90 | 120 | 180;
+
+export type AppReminder = {
+  id: string;
+  label: string;
+  message: string;
+  intervalMinutes: ReminderInterval;
+  enabled: boolean;
 };
 
 export type FoodSuggestion = {
