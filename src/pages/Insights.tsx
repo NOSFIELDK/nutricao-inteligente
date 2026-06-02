@@ -16,10 +16,15 @@ function levelTone(level: "baixo" | "medio" | "alto") {
 export default function InsightsPage() {
   const profile = useAppStore((s) => s.profile);
   const plan = useAppStore((s) => s.plan);
+  const recipeCache = useAppStore((s) => s.recipeCache);
 
   const dateISO = todayISO();
-  const insights = React.useMemo(() => buildInsights({ profile, catalog, plan, dateISO }), [profile, plan, dateISO]);
-  const macros = React.useMemo(() => calcDayMacros({ catalog, plan, dateISO }), [plan, dateISO]);
+  const mergedCatalog = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
+  const insights = React.useMemo(
+    () => buildInsights({ profile, catalog: mergedCatalog, plan, dateISO }),
+    [profile, mergedCatalog, plan, dateISO],
+  );
+  const macros = React.useMemo(() => calcDayMacros({ catalog: mergedCatalog, plan, dateISO }), [mergedCatalog, plan, dateISO]);
 
   return (
     <div className="grid gap-6">

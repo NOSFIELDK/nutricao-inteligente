@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { TextField } from "@/components/ui/TextField";
+import { hasRemoteApi, searchRemoteRecipes } from "@/api/recipesApi";
 import { recipes } from "@/data/catalog";
 import type { CatalogTag, Recipe } from "@/domain/models";
 import { useAppStore } from "@/store/useAppStore";
+import { uid } from "@/utils/id";
 
 const quickFilters: { tag: CatalogTag; label: string }[] = [
   { tag: "highProtein", label: "Proteína" },
@@ -31,23 +33,70 @@ function matchesSearch(r: Recipe, q: string) {
 export default function RecipesPage() {
   const [q, setQ] = React.useState("");
   const [tag, setTag] = React.useState<CatalogTag | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [seed, setSeed] = React.useState(() => uid("seed"));
+  const [remote, setRemote] = React.useState<Recipe[]>([]);
+  const [remoteTotal, setRemoteTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const isFavorite = useAppStore((s) => s.isFavorite);
+  const cacheRecipes = useAppStore((s) => s.cacheRecipes);
+
+  const useRemote = hasRemoteApi();
+
+  React.useEffect(() => {
+    if (!useRemote) return;
+    setPage(1);
+    setRemote([]);
+    setRemoteTotal(0);
+    if (!q.trim()) setSeed(uid("seed"));
+  }, [q, useRemote]);
+
+  React.useEffect(() => {
+    if (!useRemote) return;
+    let alive = true;
+    setLoading(true);
+    setError(null);
+
+    searchRemoteRecipes({ q, page, pageSize: 12, seed })
+      .then((res) => {
+        if (!alive) return;
+        setRemote((prev) => (page === 1 ? res.items : [...prev, ...res.items]));
+        setRemoteTotal(res.total);
+        cacheRecipes(res.items);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setError(e instanceof Error ? e.message : "Falha ao carregar.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [cacheRecipes, page, q, seed, useRemote]);
 
   const list = React.useMemo(() => {
+    if (useRemote) return remote;
     return recipes
       .filter((r) => matchesSearch(r, q))
       .filter((r) => (tag ? r.tags.includes(tag) : true))
       .sort((a, b) => b.proteinG - a.proteinG);
-  }, [q, tag]);
+  }, [q, remote, tag, useRemote]);
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="font-display text-2xl tracking-tight text-fg">Receitas</div>
-          <div className="mt-1 text-sm text-muted">Busca por ingredientes, objetivo e tags.</div>
+          <div className="mt-1 text-sm text-muted">
+            {useRemote ? "Catálogo online (macros estimados)." : "Catálogo local (demo)."}
+          </div>
         </div>
       </div>
 
@@ -58,17 +107,44 @@ export default function RecipesPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <div className="flex flex-wrap gap-2">
-          <Chip active={!tag} onClick={() => setTag(null)} type="button">
-            Todas
-          </Chip>
-          {quickFilters.map((f) => (
-            <Chip key={f.tag} active={tag === f.tag} onClick={() => setTag((prev) => (prev === f.tag ? null : f.tag))} type="button">
-              {f.label}
+        {useRemote && !q.trim() ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setSeed(uid("seed"));
+                setPage(1);
+                setRemote([]);
+                setRemoteTotal(0);
+              }}
+            >
+              Novas sugestões
+            </Button>
+          </div>
+        ) : null}
+        {!useRemote ? (
+          <div className="flex flex-wrap gap-2">
+            <Chip active={!tag} onClick={() => setTag(null)} type="button">
+              Todas
             </Chip>
-          ))}
-        </div>
+            {quickFilters.map((f) => (
+              <Chip
+                key={f.tag}
+                active={tag === f.tag}
+                onClick={() => setTag((prev) => (prev === f.tag ? null : f.tag))}
+                type="button"
+              >
+                {f.label}
+              </Chip>
+            ))}
+          </div>
+        ) : null}
       </div>
+
+      {error ? (
+        <div className="rounded-2xl bg-card/80 p-4 text-sm text-red-500 ring-1 ring-border shadow-crisp">{error}</div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {list.map((r, idx) => (
@@ -103,6 +179,18 @@ export default function RecipesPage() {
           </div>
         ))}
       </div>
+
+      {useRemote ? (
+        <div className="flex items-center justify-center">
+          <Button
+            variant="secondary"
+            disabled={loading || list.length >= remoteTotal}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            {loading ? "Carregando..." : list.length >= remoteTotal ? "Fim" : "Carregar mais"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

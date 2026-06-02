@@ -1,0 +1,11 @@
+name = "nutricao-inteligente-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+[vars]
+MEALDB_BASE = "https://www.themealdb.com/api/json/v1/1"
+FDC_BASE = "https://api.nal.usda.gov/fdc/v1"
+
+[[kv_namespaces]]
+binding = "NUTRI_KV"
+id = "REPLACE_WITH_YOUR_KV_ID"

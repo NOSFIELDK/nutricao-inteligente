@@ -5,22 +5,90 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/TextField";
+import { getRemoteRecipe, hasRemoteApi } from "@/api/recipesApi";
 import { recipes } from "@/data/catalog";
-import type { MealSlot } from "@/domain/models";
+import type { MealSlot, Recipe } from "@/domain/models";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
 
 export default function RecipeDetailPage() {
   const { id } = useParams();
-  const recipe = recipes.find((r) => r.id === id);
+  const [recipe, setRecipe] = React.useState<Recipe | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const isFavorite = useAppStore((s) => s.isFavorite);
   const addToPlan = useAppStore((s) => s.addToPlan);
+  const cacheRecipes = useAppStore((s) => s.cacheRecipes);
 
   const [open, setOpen] = React.useState(false);
   const [dateISO, setDateISO] = React.useState(todayISO());
   const [mealSlot, setMealSlot] = React.useState<MealSlot>("almoco");
+
+  React.useEffect(() => {
+    const local = recipes.find((r) => r.id === id);
+    if (local) {
+      setRecipe(local);
+      setError(null);
+      return;
+    }
+    if (!id) {
+      setRecipe(null);
+      setError("Receita inválida.");
+      return;
+    }
+    if (!hasRemoteApi()) {
+      setRecipe(null);
+      setError("API de receitas não configurada.");
+      return;
+    }
+
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    getRemoteRecipe(id)
+      .then((r) => {
+        if (!alive) return;
+        setRecipe(r);
+        cacheRecipes([r]);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setRecipe(null);
+        setError(e instanceof Error ? e.message : "Falha ao carregar.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [cacheRecipes, id]);
+
+  if (loading && !recipe) {
+    return (
+      <div className="rounded-2xl bg-card/80 p-6 ring-1 ring-border shadow-crisp">
+        <div className="font-display text-xl tracking-tight text-fg">Carregando receita…</div>
+      </div>
+    );
+  }
+
+  if (error && !recipe) {
+    return (
+      <div className="rounded-2xl bg-card/80 p-6 ring-1 ring-border shadow-crisp">
+        <div className="font-display text-xl tracking-tight text-fg">Não foi possível abrir a receita</div>
+        <div className="mt-2 text-sm text-red-500">{error}</div>
+        <div className="mt-3">
+          <Link to="/receitas" className="text-sm font-medium text-accent">
+            Voltar para receitas
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!recipe) {
     return (

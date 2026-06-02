@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { AppReminder, CatalogItem, Favorite, MealSlot, PlanItem, ReminderInterval, UserProfile } from "@/domain/models";
+import type { AppReminder, CatalogItem, Favorite, MealSlot, PlanItem, Recipe, ReminderInterval, UserProfile } from "@/domain/models";
 import { STORAGE_KEYS } from "@/storage/keys";
 import { uid } from "@/utils/id";
 
@@ -17,6 +17,7 @@ type AppState = {
   plan: PlanItem[];
   shoppingChecked: Record<string, boolean>;
   reminders: AppReminder[];
+  recipeCache: Record<string, Recipe>;
 
   setProfile: (profile: UserProfile) => void;
   clearProfile: () => void;
@@ -32,6 +33,8 @@ type AppState = {
   setShoppingChecked: (key: string, checked: boolean) => void;
   clearShoppingChecked: () => void;
 
+  cacheRecipes: (recipes: Recipe[]) => void;
+
   setReminderEnabled: (id: string, enabled: boolean) => void;
   setReminderInterval: (id: string, interval: ReminderInterval) => void;
   addReminder: (label: string, message: string, intervalMinutes: ReminderInterval) => void;
@@ -46,9 +49,10 @@ export const useAppStore = create<AppState>()(
       plan: [],
       shoppingChecked: {},
       reminders: DEFAULT_REMINDERS,
+      recipeCache: {},
 
       setProfile: (profile) => set({ profile }),
-      clearProfile: () => set({ profile: null, favorites: [], plan: [], shoppingChecked: {} }),
+      clearProfile: () => set({ profile: null, favorites: [], plan: [], shoppingChecked: {}, recipeCache: {} }),
 
       toggleFavorite: (item) => {
         const { favorites } = get();
@@ -56,6 +60,9 @@ export const useAppStore = create<AppState>()(
         if (found) {
           set({ favorites: favorites.filter((f) => f.id !== found.id) });
           return;
+        }
+        if (item.type === "recipe") {
+          set({ recipeCache: { ...get().recipeCache, [item.id]: item } });
         }
         set({
           favorites: [...favorites, { id: uid("fav"), itemType: item.type, itemId: item.id }],
@@ -67,6 +74,9 @@ export const useAppStore = create<AppState>()(
       },
 
       addToPlan: ({ item, dateISO, mealSlot, servings = 1 }) => {
+        if (item.type === "recipe") {
+          set({ recipeCache: { ...get().recipeCache, [item.id]: item } });
+        }
         set({
           plan: [
             ...get().plan,
@@ -89,6 +99,13 @@ export const useAppStore = create<AppState>()(
 
       clearShoppingChecked: () => set({ shoppingChecked: {} }),
 
+      cacheRecipes: (recipes) => {
+        if (recipes.length === 0) return;
+        const next = { ...get().recipeCache };
+        for (const r of recipes) next[r.id] = r;
+        set({ recipeCache: next });
+      },
+
       setReminderEnabled: (id, enabled) =>
         set({ reminders: get().reminders.map((r) => (r.id === id ? { ...r, enabled } : r)) }),
 
@@ -103,7 +120,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEYS.state,
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState>;
         return {
@@ -112,6 +129,7 @@ export const useAppStore = create<AppState>()(
           plan: state.plan ?? [],
           shoppingChecked: state.shoppingChecked ?? {},
           reminders: version < 2 ? DEFAULT_REMINDERS : state.reminders ?? DEFAULT_REMINDERS,
+          recipeCache: version < 3 ? {} : state.recipeCache ?? {},
         };
       },
       partialize: (state) => ({
@@ -120,6 +138,7 @@ export const useAppStore = create<AppState>()(
         plan: state.plan,
         shoppingChecked: state.shoppingChecked,
         reminders: state.reminders,
+        recipeCache: state.recipeCache,
       }),
     },
   ),

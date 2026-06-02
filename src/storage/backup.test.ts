@@ -28,18 +28,21 @@ describe("backup", () => {
   it("exporta e restaura o estado", () => {
     localStorage.setItem(STORAGE_KEYS.theme, "dark");
     localStorage.setItem(STORAGE_KEYS.state, JSON.stringify({ any: "data" }));
+    localStorage.setItem(STORAGE_KEYS.apiBase, "https://example.workers.dev");
 
     const b = createBackup();
-    expect(b.version).toBe(1);
+    expect(b.version).toBe(2);
     expect(b.theme).toBe("dark");
     expect(b.state).toBe(JSON.stringify({ any: "data" }));
+    expect(b.apiBase).toBe("https://example.workers.dev");
 
     resetAll();
     expect(localStorage.getItem(STORAGE_KEYS.state)).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEYS.apiBase)).toBeNull();
 
     restoreBackup(b);
     expect(localStorage.getItem(STORAGE_KEYS.theme)).toBe("dark");
     expect(localStorage.getItem(STORAGE_KEYS.state)).toBe(JSON.stringify({ any: "data" }));
+    expect(localStorage.getItem(STORAGE_KEYS.apiBase)).toBe("https://example.workers.dev");
   });
 });
-
