@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 60 33% 98%;
+  --fg: 158 22% 10%;
+  --muted: 165 10% 42%;
+
+  --card: 0 0% 100%;
+  --card-2: 70 30% 96%;
+  --border: 160 14% 86%;
+
+  --accent: 88 92% 45%;
+  --accent-2: 18 92% 62%;
+
+  --shadow: 0 0% 0%;
+  --radius: 18px;
+  --radius-sm: 12px;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+.dark {
+  --bg: 156 25% 7%;
+  --fg: 60 33% 96%;
+  --muted: 160 10% 70%;
+
+  --card: 156 22% 10%;
+  --card-2: 156 18% 13%;
+  --border: 156 12% 22%;
+
+  --accent: 88 92% 52%;
+  --accent-2: 18 92% 64%;
+
+  --shadow: 0 0% 0%;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: hsl(var(--fg));
+  background: radial-gradient(1200px 600px at 20% 0%, hsl(var(--accent) / 0.10), transparent 55%),
+    radial-gradient(1000px 700px at 80% 10%, hsl(var(--accent-2) / 0.10), transparent 55%), hsl(var(--bg));
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

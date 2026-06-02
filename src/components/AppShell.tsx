@@ -1,0 +1,136 @@
+import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Leaf, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
+import * as React from "react";
+import { NavLink, Outlet } from "react-router-dom";
+
+import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/useTheme";
+
+type NavItem = {
+  to: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+};
+
+const nav: NavItem[] = [
+  { to: "/painel", label: "Painel", Icon: LayoutDashboard },
+  { to: "/receitas", label: "Receitas", Icon: UtensilsCrossed },
+  { to: "/alimentos", label: "Alimentos", Icon: Apple },
+  { to: "/suplementos", label: "Suplementos", Icon: Dumbbell },
+  { to: "/plano", label: "Plano", Icon: CalendarDays },
+  { to: "/compras", label: "Compras", Icon: ShoppingBasket },
+  { to: "/insights", label: "Insights", Icon: Sparkles },
+  { to: "/configuracoes", label: "Ajustes", Icon: Settings },
+];
+
+function Brand() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent/25 ring-1 ring-accent/25 shadow-crisp">
+        <Leaf className="h-5 w-5 text-fg" />
+      </div>
+      <div className="leading-tight">
+        <div className="font-display text-sm tracking-tight text-fg">Nutrição</div>
+        <div className="text-[11px] text-muted">inteligente</div>
+      </div>
+    </div>
+  );
+}
+
+function ThemeToggle() {
+  const { isDark, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className="inline-flex items-center justify-center rounded-lg bg-card-2/70 px-3 py-2 text-xs font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
+    >
+      {isDark ? "Modo claro" : "Modo escuro"}
+    </button>
+  );
+}
+
+function NavItemLink({ to, label, Icon }: NavItem) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm ring-1 transition",
+          isActive
+            ? "bg-accent/16 text-fg ring-accent/22"
+            : "bg-transparent text-muted ring-transparent hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
+        )
+      }
+    >
+      <Icon className="h-4 w-4 opacity-90" />
+      <span className="truncate">{label}</span>
+    </NavLink>
+  );
+}
+
+function BottomItemLink({ to, label, Icon }: NavItem) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          "flex w-full flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-medium transition",
+          isActive ? "bg-accent/16 text-fg" : "text-muted hover:bg-card-2/70 hover:text-fg",
+        )
+      }
+    >
+      <Icon className="h-4 w-4" />
+      <span className="truncate">{label}</span>
+    </NavLink>
+  );
+}
+
+export function AppShell() {
+  return (
+    <div className="min-h-full">
+      <div className="mx-auto grid max-w-[1220px] grid-cols-1 gap-6 px-4 pb-24 pt-6 md:grid-cols-[260px_1fr] md:pb-10">
+        <aside className="hidden md:flex md:flex-col md:gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <Brand />
+            <ThemeToggle />
+          </div>
+          <div className="rounded-2xl bg-card/70 ring-1 ring-border shadow-crisp">
+            <div className="flex flex-col gap-1 p-2">
+              {nav.map((item) => (
+                <NavItemLink key={item.to} {...item} />
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl bg-card/60 p-4 text-xs text-muted ring-1 ring-border shadow-crisp">
+            <div className="font-medium text-fg">Dica rápida</div>
+            <div className="mt-1 leading-relaxed">
+              Use o Plano Semanal para gerar uma lista de compras automaticamente e manter consistência nos macros.
+            </div>
+          </div>
+        </aside>
+        <main className="min-w-0">
+          <Outlet />
+        </main>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 md:hidden">
+        <div className="mx-auto max-w-[900px] px-4 pb-3">
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-card/90 p-2 ring-1 ring-border shadow-soft backdrop-blur-md">
+            <div className="flex items-center gap-2 pl-1">
+              <Brand />
+            </div>
+            <div className="flex flex-1 gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {nav.map((item) => (
+                <div key={item.to} className="min-w-[72px]">
+                  <BottomItemLink {...item} />
+                </div>
+              ))}
+            </div>
+            <div className="pr-1">
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
