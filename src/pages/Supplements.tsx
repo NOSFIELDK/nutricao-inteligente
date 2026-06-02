@@ -43,12 +43,13 @@ export default function SupplementsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {list.map((rec) => (
+        {list.map((rec, idx) => (
           <RecommendationCard
             key={rec.item.id}
             rec={rec}
             isFavorite={isFavorite(rec.item)}
             onToggleFavorite={() => toggleFavorite(rec.item)}
+            animationDelay={Math.min(idx * 55, 400)}
             onAddToPlan={() => openAdd(rec.item)}
             compact
           />

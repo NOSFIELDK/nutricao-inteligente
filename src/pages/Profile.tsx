@@ -99,7 +99,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: "60ms" } as React.CSSProperties}>
           <CardHeader>
             <CardTitle>Dados básicos</CardTitle>
           </CardHeader>
@@ -139,7 +139,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: "120ms" } as React.CSSProperties}>
           <CardHeader>
             <CardTitle>Objetivo principal</CardTitle>
           </CardHeader>
@@ -150,8 +150,10 @@ export default function ProfilePage() {
                   key={g.value}
                   onClick={() => setGoal(g.value)}
                   className={[
-                    "rounded-xl p-3 text-left ring-1 transition",
-                    goal === g.value ? "bg-accent/16 ring-accent/22" : "bg-card-2/60 ring-border hover:bg-card-2",
+                    "rounded-xl p-3 text-left ring-1 transition-all duration-200",
+                    goal === g.value
+                      ? "bg-accent/16 ring-accent/30 shadow-[0_0_0_1px_hsl(var(--accent)/0.18),inset_0_1px_0_hsl(var(--accent)/0.12)] scale-[1.02]"
+                      : "bg-card-2/60 ring-border hover:bg-card-2 hover:scale-[1.01]",
                   ].join(" ")}
                 >
                   <div className="font-medium text-fg">{g.label}</div>
@@ -162,7 +164,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 animate-fade-up" style={{ animationDelay: "180ms" } as React.CSSProperties}>
           <CardHeader>
             <CardTitle>Preferências e restrições</CardTitle>
           </CardHeader>
