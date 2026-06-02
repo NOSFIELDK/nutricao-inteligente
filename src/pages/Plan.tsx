@@ -115,12 +115,27 @@ export default function PlanPage() {
       </div>
 
       <div className="grid gap-4">
-        {weekDays.map((d) => {
+        {weekDays.map((d, idx) => {
           const items = byDate.get(d) ?? [];
+          const isToday = d === start;
           return (
-            <div key={d} className="rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp">
+            <div
+              key={d}
+              className={[
+                "rounded-2xl ring-1 shadow-crisp animate-fade-up transition",
+                isToday ? "bg-accent/8 ring-accent/25" : "bg-card/85 ring-border",
+              ].join(" ")}
+              style={{ animationDelay: `${idx * 50}ms` }}
+            >
               <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
-                <div className="font-display text-lg tracking-tight text-fg">{d}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-display text-lg tracking-tight text-fg">{d}</div>
+                  {isToday && (
+                    <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[11px] font-medium text-fg ring-1 ring-accent/30">
+                      hoje
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-muted">{items.length} item(ns)</div>
               </div>
               <div className="grid gap-3 p-4">
