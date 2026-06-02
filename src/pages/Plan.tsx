@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -127,9 +128,9 @@ export default function PlanPage() {
       {!profile && (
         <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up flex items-center justify-between gap-4">
           <div className="text-sm text-muted">Crie seu perfil para desbloquear "Gerar semana" e recomendações personalizadas.</div>
-          <a href="#/perfil" className="shrink-0 inline-flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02]">
+          <Link to="/perfil" className="shrink-0 inline-flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02]">
             Criar perfil
-          </a>
+          </Link>
         </div>
       )}
 

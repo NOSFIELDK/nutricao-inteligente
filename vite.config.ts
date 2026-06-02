@@ -4,9 +4,8 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { traeBadgePlugin } from 'vite-plugin-trae-solo-badge';
 
 // https://vite.dev/config/
-export default defineConfig({
-  // Base path para deploy no GitHub Pages (https://<user>.github.io/nutricao-inteligente/)
-  base: '/nutricao-inteligente/',
+export default defineConfig(({ mode }) => ({
+  base: mode === "production" ? "/nutricao-inteligente/" : "/",
   build: {
     sourcemap: 'hidden',
   },
@@ -29,4 +28,4 @@ export default defineConfig({
     }), 
     tsconfigPaths()
   ],
-})
+}))

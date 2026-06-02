@@ -86,6 +86,20 @@ export default function RecipeDetailPage() {
                 ))}
               </ol>
             </div>
+
+            {recipe.ingredientNotes && recipe.ingredientNotes.length > 0 && (
+              <div>
+                <div className="text-xs font-medium text-muted">Benefícios dos ingredientes</div>
+                <div className="mt-2 grid gap-2 text-sm">
+                  {recipe.ingredientNotes.map((note, idx) => (
+                    <div key={idx} className="rounded-lg bg-accent/8 px-3 py-2 ring-1 ring-accent/15">
+                      <span className="font-medium text-fg">{note.ingredient}</span>
+                      <span className="text-fg/70"> — {note.benefit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3 self-start rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">

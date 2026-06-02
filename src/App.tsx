@@ -1,6 +1,7 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 
 import { AppShell } from "@/components/AppShell";
+import { ReminderBanner } from "@/components/ReminderBanner";
 import DashboardPage from "@/pages/Dashboard";
 import FoodsPage from "@/pages/Foods";
 import InsightsPage from "@/pages/Insights";
@@ -15,6 +16,7 @@ import SupplementsPage from "@/pages/Supplements";
 
 export default function App() {
   return (
+    <>
     <Router>
       <Routes>
         <Route path="/" element={<RootRedirect />} />
@@ -32,5 +34,7 @@ export default function App() {
         </Route>
       </Routes>
     </Router>
+    <ReminderBanner />
+    </>
   );
 }
