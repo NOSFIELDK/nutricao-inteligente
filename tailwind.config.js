@@ -30,6 +30,25 @@ export default {
         soft: "0 20px 60px hsl(var(--shadow) / 0.18)",
         crisp: "0 10px 30px hsl(var(--shadow) / 0.12)",
       },
+      keyframes: {
+        "page-in": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(14px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "bar-fill": {
+          "0%": { transform: "scaleX(0)" },
+          "100%": { transform: "scaleX(1)" },
+        },
+      },
+      animation: {
+        "page-in": "page-in 0.28s cubic-bezier(0.22,1,0.36,1) both",
+        "fade-up": "fade-up 0.32s cubic-bezier(0.22,1,0.36,1) both",
+        "bar-fill": "bar-fill 0.7s cubic-bezier(0.22,1,0.36,1) both",
+      },
     },
   },
   plugins: [],

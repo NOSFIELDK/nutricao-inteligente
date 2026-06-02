@@ -1,6 +1,6 @@
 import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Leaf, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
 import * as React from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
@@ -54,14 +54,14 @@ function NavItemLink({ to, label, Icon }: NavItem) {
       to={to}
       className={({ isActive }) =>
         cn(
-          "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm ring-1 transition",
+          "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm ring-1 transition-all duration-150",
           isActive
-            ? "bg-accent/16 text-fg ring-accent/22"
+            ? "bg-accent/16 text-fg ring-accent/30 shadow-[0_0_0_1px_hsl(var(--accent)/0.18),inset_0_1px_0_hsl(var(--accent)/0.12)]"
             : "bg-transparent text-muted ring-transparent hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
         )
       }
     >
-      <Icon className="h-4 w-4 opacity-90" />
+      <Icon className={cn("h-4 w-4 transition-transform duration-150", "group-hover:scale-110")} />
       <span className="truncate">{label}</span>
     </NavLink>
   );
@@ -85,6 +85,7 @@ function BottomItemLink({ to, label, Icon }: NavItem) {
 }
 
 export function AppShell() {
+  const { pathname } = useLocation();
   return (
     <div className="min-h-full">
       <div className="mx-auto grid max-w-[1220px] grid-cols-1 gap-6 px-4 pb-24 pt-6 md:grid-cols-[260px_1fr] md:pb-10">
@@ -107,7 +108,7 @@ export function AppShell() {
             </div>
           </div>
         </aside>
-        <main className="min-w-0">
+        <main key={pathname} className="min-w-0 animate-page-in">
           <Outlet />
         </main>
       </div>

@@ -18,18 +18,20 @@ export type RecommendationCardProps = {
   onToggleFavorite: () => void;
   onAddToPlan: () => void;
   compact?: boolean;
+  animationDelay?: number;
 };
 
-export function RecommendationCard({ rec, isFavorite, onToggleFavorite, onAddToPlan, compact }: RecommendationCardProps) {
+export function RecommendationCard({ rec, isFavorite, onToggleFavorite, onAddToPlan, compact, animationDelay = 0 }: RecommendationCardProps) {
   const item = rec.item;
   const Icon = IconFor(item);
 
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp transition hover:-translate-y-0.5 hover:shadow-soft",
+        "group relative overflow-hidden rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp transition hover:-translate-y-0.5 hover:shadow-soft animate-fade-up",
         compact ? "p-4" : "p-5",
       )}
+      style={{ animationDelay: `${animationDelay}ms` }}
     >
       {item.type === "recipe" ? (
         <div className={cn("relative mb-4 overflow-hidden rounded-xl ring-1 ring-border", compact ? "h-36" : "h-44")}>

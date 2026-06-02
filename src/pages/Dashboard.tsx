@@ -98,13 +98,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {recommendations.map((rec) => (
+            {recommendations.map((rec, idx) => (
               <RecommendationCard
                 key={`${rec.item.type}_${rec.item.id}`}
                 rec={rec}
                 isFavorite={isFavorite(rec.item)}
                 onToggleFavorite={() => toggleFavorite(rec.item)}
                 onAddToPlan={() => openAdd(rec.item)}
+                animationDelay={Math.min(idx * 50, 350)}
               />
             ))}
           </div>
