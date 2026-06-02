@@ -36,22 +36,35 @@ export default function InsightsPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp">
-          <div className="text-xs text-muted">Proteína</div>
-          <div className="mt-1 font-display text-xl tracking-tight text-fg">{macros.proteinG}g</div>
-        </div>
-        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp">
-          <div className="text-xs text-muted">Carbo</div>
-          <div className="mt-1 font-display text-xl tracking-tight text-fg">{macros.carbsG}g</div>
-        </div>
-        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp">
-          <div className="text-xs text-muted">Gordura</div>
-          <div className="mt-1 font-display text-xl tracking-tight text-fg">{macros.fatG}g</div>
-        </div>
-        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp">
-          <div className="text-xs text-muted">Fibras</div>
-          <div className="mt-1 font-display text-xl tracking-tight text-fg">{macros.fiberG}g</div>
-        </div>
+        {(
+          [
+            { label: "Proteína", value: macros.proteinG, unit: "g", target: 50, color: "bg-accent" },
+            { label: "Carbo",    value: macros.carbsG,   unit: "g", target: 250, color: "bg-accent-2" },
+            { label: "Gordura",  value: macros.fatG,     unit: "g", target: 70,  color: "bg-accent/70" },
+            { label: "Fibras",   value: macros.fiberG,   unit: "g", target: 25,  color: "bg-accent-2/70" },
+          ] as const
+        ).map(({ label, value, unit, target, color }, idx) => {
+          const pct = Math.min(100, Math.round((value / target) * 100));
+          return (
+            <div
+              key={label}
+              className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up"
+              style={{ animationDelay: `${idx * 60}ms` }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-muted">{label}</div>
+                <div className="text-xs text-muted">{pct}%</div>
+              </div>
+              <div className="mt-1 font-display text-xl tracking-tight text-fg">{value}{unit}</div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
+                <div
+                  className={`h-full origin-left rounded-full animate-bar-fill ${color}`}
+                  style={{ "--bar-w": `${pct}%`, animationDelay: `${idx * 60 + 150}ms` } as React.CSSProperties}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid gap-3">

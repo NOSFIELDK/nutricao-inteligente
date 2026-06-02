@@ -71,10 +71,11 @@ export default function RecipesPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {list.map((r) => (
+        {list.map((r, idx) => (
           <div
             key={r.id}
-            className="group overflow-hidden rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp transition hover:-translate-y-0.5 hover:shadow-soft"
+            className="group overflow-hidden rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp transition hover:-translate-y-0.5 hover:shadow-soft animate-fade-up"
+            style={{ animationDelay: `${Math.min(idx * 55, 400)}ms` }}
           >
             <Link to={`/receitas/${r.id}`} className="block">
               <div className="relative h-40 overflow-hidden ring-1 ring-border">
