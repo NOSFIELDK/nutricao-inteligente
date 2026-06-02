@@ -43,13 +43,15 @@ export type IngredientNote = {
   benefit: string;
 };
 
+export type RecipeTag = CatalogTag | string;
+
 export type Recipe = {
   id: string;
   type: "recipe";
   title: string;
   imageUrl: string;
   category: "saude" | "tratamento" | "performance";
-  tags: CatalogTag[];
+  tags: RecipeTag[];
   prepMinutes: number;
   servings: number;
   ingredients: string[];

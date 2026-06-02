@@ -27,12 +27,14 @@ export default function PlanPage() {
   const profile = useAppStore((s) => s.profile);
   const plan = useAppStore((s) => s.plan);
   const favorites = useAppStore((s) => s.favorites);
+  const recipeCache = useAppStore((s) => s.recipeCache);
   const addToPlan = useAppStore((s) => s.addToPlan);
   const removeFromPlan = useAppStore((s) => s.removeFromPlan);
   const setPlanItemServings = useAppStore((s) => s.setPlanItemServings);
   const clearPlan = useAppStore((s) => s.clearPlan);
 
   const { start, end } = weekRange();
+  const mergedCatalog = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
 
   const [open, setOpen] = React.useState(false);
   const [favId, setFavId] = React.useState<string>("");
@@ -40,7 +42,7 @@ export default function PlanPage() {
   const [mealSlot, setMealSlot] = React.useState<MealSlot>("almoco");
 
   const favoriteItems: CatalogItem[] = favorites
-    .map((f) => getItem(catalog, { type: f.itemType, id: f.itemId }))
+    .map((f) => getItem(mergedCatalog, { type: f.itemType, id: f.itemId }))
     .filter((x): x is CatalogItem => !!x);
 
   React.useEffect(() => {
@@ -62,7 +64,7 @@ export default function PlanPage() {
 
   const generateWeek = () => {
     if (!profile) return;
-    const recs: Recommendation[] = recommendCatalog(profile, catalog, 30).filter((r) => r.item.type === "recipe");
+    const recs: Recommendation[] = recommendCatalog(profile, mergedCatalog, 30).filter((r) => r.item.type === "recipe");
     const picks = recs.slice(0, 14).map((r) => r.item);
     if (picks.length === 0) return;
 
@@ -172,7 +174,7 @@ export default function PlanPage() {
                       ) : (
                         <div className="grid gap-2">
                           {slotItems.map((p) => {
-                            const item = getItem(catalog, { type: p.itemType, id: p.itemId });
+                            const item = getItem(mergedCatalog, { type: p.itemType, id: p.itemId });
                             return (
                               <div key={p.id} className="flex flex-col gap-2 rounded-xl bg-card/70 p-3 ring-1 ring-border">
                                 <div className="flex items-start justify-between gap-3">

@@ -12,14 +12,17 @@ export default function ShoppingPage() {
   const shoppingChecked = useAppStore((s) => s.shoppingChecked);
   const setShoppingChecked = useAppStore((s) => s.setShoppingChecked);
   const clearShoppingChecked = useAppStore((s) => s.clearShoppingChecked);
+  const recipeCache = useAppStore((s) => s.recipeCache);
 
   const [marketMode, setMarketMode] = React.useState(false);
   const start = todayISO();
   const end = addDaysISO(start, 6);
 
+  const mergedCatalog = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
+
   const list = React.useMemo(() => {
-    return buildShoppingList({ catalog, plan, startISO: start, endISO: end });
-  }, [plan, start, end]);
+    return buildShoppingList({ catalog: mergedCatalog, plan, startISO: start, endISO: end });
+  }, [mergedCatalog, plan, start, end]);
 
   const checked_count = list.filter((i) => !!shoppingChecked[i.key]).length;
   const remaining = list.length - checked_count;

@@ -2,9 +2,11 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { TextField } from "@/components/ui/TextField";
 import type { ReminderInterval } from "@/domain/models";
 import { useTheme } from "@/hooks/useTheme";
 import { createBackup, resetAll, restoreBackup } from "@/storage/backup";
+import { STORAGE_KEYS } from "@/storage/keys";
 import { useAppStore } from "@/store/useAppStore";
 
 function download(filename: string, text: string) {
@@ -27,6 +29,7 @@ const INTERVALS: { value: ReminderInterval; label: string }[] = [
 export default function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
   const [importError, setImportError] = React.useState<string | null>(null);
+  const [apiBase, setApiBase] = React.useState(() => localStorage.getItem(STORAGE_KEYS.apiBase) ?? "");
   const [notifStatus, setNotifStatus] = React.useState<NotificationPermission | "unsupported">(
     typeof Notification === "undefined" ? "unsupported" : Notification.permission,
   );
@@ -60,6 +63,17 @@ export default function SettingsPage() {
   const onReset = () => {
     if (!window.confirm("Apagar todos os dados locais? Perfil, favoritos e plano serão removidos. Essa ação não pode ser desfeita.")) return;
     resetAll();
+    window.location.reload();
+  };
+
+  const onSaveApiBase = () => {
+    const cleaned = apiBase.trim().replace(/\/+$/g, "");
+    if (!cleaned) {
+      localStorage.removeItem(STORAGE_KEYS.apiBase);
+      window.location.reload();
+      return;
+    }
+    localStorage.setItem(STORAGE_KEYS.apiBase, cleaned);
     window.location.reload();
   };
 
@@ -105,6 +119,29 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>API de receitas</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="text-sm text-muted">
+              URL do seu Worker (Cloudflare) para habilitar busca quase infinita com macros estimados.
+            </div>
+            <TextField
+              label="Base URL"
+              placeholder="Ex.: https://nutricao-inteligente-api.seuusuario.workers.dev"
+              value={apiBase}
+              onChange={(e) => setApiBase(e.target.value)}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={onSaveApiBase}>Salvar</Button>
+              <Button variant="secondary" onClick={() => setApiBase("")}>
+                Limpar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Backup / Restore</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
@@ -127,7 +164,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Lembretes */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Lembretes</CardTitle>
