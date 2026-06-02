@@ -37,6 +37,7 @@ export default function SettingsPage() {
   };
 
   const onReset = () => {
+    if (!window.confirm("Apagar todos os dados locais? Perfil, favoritos e plano serão removidos. Essa ação não pode ser desfeita.")) return;
     resetAll();
     window.location.reload();
   };
