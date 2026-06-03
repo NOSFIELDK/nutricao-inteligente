@@ -1,4 +1,4 @@
-import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Settings, ShieldCheck, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
+import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
 import * as React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -24,10 +24,13 @@ const nav: NavItem[] = [
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2">
-      <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent/20 ring-1 ring-accent/30 shadow-crisp">
-        <ShieldCheck className="h-5 w-5 text-accent" />
-      </div>
+    <div className="flex items-center gap-2.5">
+      <img
+        src="/nutricao-inteligente/logo.png"
+        alt="LeifNutri"
+        className="h-10 w-10 rounded-xl object-cover shadow-crisp ring-1 ring-accent/30"
+        loading="eager"
+      />
       <div className="leading-none">
         <div className="font-display text-sm font-black tracking-wide">
           <span className="text-fg">Leif</span><span className="text-accent">Nutri</span>
