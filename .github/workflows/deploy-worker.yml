@@ -35,7 +35,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
           command: deploy
-          secrets: |
-            USDA_API_KEY
-        env:
-          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
+        # USDA_API_KEY é opcional — configure via `wrangler secret put USDA_API_KEY`
+        # se quiser macros reais nas receitas remotas
