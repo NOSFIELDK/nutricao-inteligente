@@ -2,6 +2,7 @@ type AiTranslation = { translated_text: string };
 
 type Env = {
   NUTRI_KV: KVNamespace;
+  DB?: D1Database;
   AI?: { run(model: string, params: { text: string; source_lang: string; target_lang: string }): Promise<AiTranslation> };
   USDA_API_KEY?: string;
   MEALDB_BASE?: string;
@@ -49,9 +50,22 @@ function json<T>(data: T, init?: ResponseInit) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,OPTIONS",
-      "access-control-allow-headers": "content-type",
+      "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+      "access-control-allow-headers": "content-type,authorization",
+      "access-control-max-age": "86400",
       ...(init?.headers ?? {}),
+    },
+  });
+}
+
+function noContent() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+      "access-control-allow-headers": "content-type,authorization",
+      "access-control-max-age": "86400",
     },
   });
 }
@@ -62,6 +76,10 @@ function clamp(n: number, min: number, max: number) {
 
 function round1(n: number) {
   return Math.round(n * 10) / 10;
+}
+
+function methodNotAllowed() {
+  return json({ error: "method_not_allowed" }, { status: 405 });
 }
 
 function normalizeKey(s: string) {
@@ -373,6 +391,163 @@ function internalError(message: string) {
   return json({ error: "internal_error", message }, { status: 500 });
 }
 
+function unauthorized(message = "unauthorized") {
+  return json({ error: "unauthorized", message }, { status: 401 });
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function toHex(bytes: ArrayBuffer | Uint8Array) {
+  const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  return Array.from(view)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function fromHex(hex: string) {
+  const clean = hex.trim();
+  if (clean.length % 2 !== 0) return null;
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    const byte = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+    if (!Number.isFinite(byte)) return null;
+    out[i] = byte;
+  }
+  return out;
+}
+
+async function hashPassword(password: string, saltHex?: string) {
+  const enc = new TextEncoder();
+  const salt = saltHex ? fromHex(saltHex) : null;
+  const saltBytes = salt ?? crypto.getRandomValues(new Uint8Array(16));
+  const iterations = 120_000;
+
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: saltBytes, iterations, hash: "SHA-256" },
+    key,
+    256,
+  );
+  return { hashHex: toHex(bits), saltHex: toHex(saltBytes), iterations };
+}
+
+function randomTokenHex(size = 32) {
+  const bytes = crypto.getRandomValues(new Uint8Array(size));
+  return toHex(bytes);
+}
+
+function bearerToken(req: Request) {
+  const h = req.headers.get("authorization") ?? "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m?.[1]?.trim() ?? "";
+}
+
+async function requireSession(req: Request, env: Env) {
+  if (!env.DB) return { ok: false as const, res: internalError("db_not_configured") };
+  const token = bearerToken(req);
+  if (!token) return { ok: false as const, res: unauthorized() };
+
+  const row = await env.DB.prepare("SELECT user_id as userId, expires_at as expiresAt FROM sessions WHERE token = ?")
+    .bind(token)
+    .first<{ userId: string; expiresAt: string }>();
+  if (!row?.userId) return { ok: false as const, res: unauthorized() };
+
+  const exp = Date.parse(row.expiresAt);
+  if (!Number.isFinite(exp) || exp < Date.now()) {
+    await env.DB.prepare("DELETE FROM sessions WHERE token = ?").bind(token).run();
+    return { ok: false as const, res: unauthorized("session_expired") };
+  }
+
+  return { ok: true as const, userId: row.userId, token };
+}
+
+async function handleRegister(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured");
+  const body = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
+  const email = normalizeEmail(body?.email ?? "");
+  const password = body?.password ?? "";
+  if (!email || !password || password.length < 8) return badRequest("email/password inválidos (senha min 8).");
+
+  const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: string }>();
+  if (existing?.id) return json({ error: "email_taken" }, { status: 409 });
+
+  const userId = randomTokenHex(16);
+  const { hashHex, saltHex, iterations } = await hashPassword(password);
+  const now = new Date().toISOString();
+
+  await env.DB.prepare("INSERT INTO users (id, email, pw_hash, pw_salt, pw_iter, created_at) VALUES (?,?,?,?,?,?)")
+    .bind(userId, email, hashHex, saltHex, iterations, now)
+    .run();
+
+  const token = randomTokenHex(32);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+  await env.DB.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)")
+    .bind(token, userId, expiresAt)
+    .run();
+
+  return json({ ok: true, token, expiresAt });
+}
+
+async function handleLogin(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured");
+  const body = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
+  const email = normalizeEmail(body?.email ?? "");
+  const password = body?.password ?? "";
+  if (!email || !password) return badRequest("missing email/password");
+
+  const user = await env.DB.prepare("SELECT id, pw_hash as hashHex, pw_salt as saltHex FROM users WHERE email = ?")
+    .bind(email)
+    .first<{ id: string; hashHex: string; saltHex: string }>();
+  if (!user?.id) return unauthorized("invalid_credentials");
+
+  const derived = await hashPassword(password, user.saltHex);
+  if (derived.hashHex !== user.hashHex) return unauthorized("invalid_credentials");
+
+  const token = randomTokenHex(32);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+  await env.DB.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)")
+    .bind(token, user.id, expiresAt)
+    .run();
+
+  return json({ ok: true, token, expiresAt });
+}
+
+async function handleMe(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured");
+  const s = await requireSession(req, env);
+  if (!s.ok) return s.res;
+  const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(s.userId).first<{ email: string }>();
+  return json({ ok: true, email: user?.email ?? "" });
+}
+
+async function handleSyncPush(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured");
+  const s = await requireSession(req, env);
+  if (!s.ok) return s.res;
+  const raw = await req.text();
+  if (!raw) return badRequest("missing body");
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO sync_data (user_id, data, updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+  )
+    .bind(s.userId, raw, now)
+    .run();
+  return json({ ok: true, updatedAt: now });
+}
+
+async function handleSyncPull(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured");
+  const s = await requireSession(req, env);
+  if (!s.ok) return s.res;
+  const row = await env.DB.prepare("SELECT data, updated_at as updatedAt FROM sync_data WHERE user_id = ?")
+    .bind(s.userId)
+    .first<{ data: string; updatedAt: string }>();
+  if (!row?.data) return json({ ok: true, data: null, updatedAt: null });
+  return json({ ok: true, data: row.data, updatedAt: row.updatedAt });
+}
+
 async function getOrComputeNormalizedRecipe(env: Env, meal: MealDbRecipe) {
   // v2: inclui tradução PT — chave diferente para forçar re-cache
   const cacheKey = `recipe:pt:themealdb:${meal.idMeal}`;
@@ -487,15 +662,41 @@ async function handleGetById(req: Request, env: Env) {
 
 export default {
   async fetch(req: Request, env: Env) {
-    if (req.method === "OPTIONS") return json({ ok: true });
-    if (req.method !== "GET") return json({ error: "method_not_allowed" }, { status: 405 });
-
     try {
+      if (req.method === "OPTIONS") return noContent();
       const url = new URL(req.url);
       if (!url.pathname.startsWith("/api/")) return notFound();
 
-      if (url.pathname === "/api/recipes/search") return await handleSearch(req, env);
-      if (url.pathname.startsWith("/api/recipes/")) return await handleGetById(req, env);
+      if (url.pathname === "/api/recipes/search") {
+        if (req.method !== "GET") return methodNotAllowed();
+        return await handleSearch(req, env);
+      }
+      if (url.pathname.startsWith("/api/recipes/")) {
+        if (req.method !== "GET") return methodNotAllowed();
+        return await handleGetById(req, env);
+      }
+
+      if (url.pathname === "/api/auth/register") {
+        if (req.method !== "POST") return methodNotAllowed();
+        return await handleRegister(req, env);
+      }
+      if (url.pathname === "/api/auth/login") {
+        if (req.method !== "POST") return methodNotAllowed();
+        return await handleLogin(req, env);
+      }
+      if (url.pathname === "/api/auth/me") {
+        if (req.method !== "GET") return methodNotAllowed();
+        return await handleMe(req, env);
+      }
+
+      if (url.pathname === "/api/sync/push") {
+        if (req.method !== "POST") return methodNotAllowed();
+        return await handleSyncPush(req, env);
+      }
+      if (url.pathname === "/api/sync/pull") {
+        if (req.method !== "GET") return methodNotAllowed();
+        return await handleSyncPull(req, env);
+      }
 
       return notFound();
     } catch (e) {

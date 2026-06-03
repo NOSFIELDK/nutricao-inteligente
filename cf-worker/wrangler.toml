@@ -10,5 +10,10 @@ FDC_BASE = "https://api.nal.usda.gov/fdc/v1"
 binding = "NUTRI_KV"
 id = "13948453571142b1b323012f0f13c341"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "nutricao-inteligente"
+database_id = "REPLACE_ME"
+
 [ai]
 binding = "AI"

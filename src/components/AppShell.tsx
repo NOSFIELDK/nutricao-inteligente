@@ -1,4 +1,4 @@
-import { Apple, BarChart3, CalendarDays, Dumbbell, LayoutDashboard, Settings, ShoppingBasket, Sparkles, Sword, UtensilsCrossed } from "lucide-react";
+import { Apple, BarChart3, CalendarDays, Dumbbell, Info, LayoutDashboard, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
 import * as React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -22,6 +22,7 @@ const nav: NavItem[] = [
   { to: "/compras",      label: "Saque",      subtitle: "Compras",      Icon: ShoppingBasket },
   { to: "/insights",     label: "Runas",      subtitle: "Insights",     Icon: Sparkles },
   { to: "/configuracoes",label: "Forja",      subtitle: "Ajustes",      Icon: Settings },
+  { to: "/sobre",        label: "Código",     subtitle: "Sobre",        Icon: Info },
 ];
 
 const VIKING_QUOTES = [

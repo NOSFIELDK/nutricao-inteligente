@@ -4,9 +4,10 @@ function round(n: number) {
   return Math.round(n * 10) / 10;
 }
 
-export function buildTargets(profile: UserProfile | null): NutritionTargets {
+export function buildTargets(profile: UserProfile | null, override?: NutritionTargets | null): NutritionTargets {
   if (!profile) {
-    return { proteinG: 0, fiberG: 25, waterMl: 2000 };
+    const base = { proteinG: 0, fiberG: 25, waterMl: 2000 };
+    return override ? { ...base, ...override } : base;
   }
 
   const proteinG =
@@ -17,6 +18,7 @@ export function buildTargets(profile: UserProfile | null): NutritionTargets {
         : profile.weightKg * 1.0;
 
   const waterMl = profile.weightKg * 35;
-  return { proteinG: round(proteinG), fiberG: 25, waterMl: Math.round(waterMl) };
+  const base = { proteinG: round(proteinG), fiberG: 25, waterMl: Math.round(waterMl) };
+  return override ? { ...base, ...override } : base;
 }
 

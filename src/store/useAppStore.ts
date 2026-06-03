@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { AppReminder, CatalogItem, Favorite, MealSlot, PlanItem, Recipe, ReminderInterval, UserProfile } from "@/domain/models";
+import type { AppReminder, CatalogItem, Favorite, FontScale, ManualEntry, MealSlot, NutritionTargets, PlanItem, Recipe, ReminderInterval, UserProfile } from "@/domain/models";
 import { STORAGE_KEYS } from "@/storage/keys";
 import { uid } from "@/utils/id";
 
@@ -20,6 +20,10 @@ type AppState = {
   recipeCache: Record<string, Recipe>;
   consumedPlan: Record<string, boolean>;
   waterByDate: Record<string, number>;
+  manualByDate: Record<string, ManualEntry[]>;
+  customTargets: NutritionTargets | null;
+  highContrast: boolean;
+  fontScale: FontScale;
 
   setProfile: (profile: UserProfile) => void;
   clearProfile: () => void;
@@ -41,6 +45,15 @@ type AppState = {
   setWater: (dateISO: string, waterMl: number) => void;
   addWater: (dateISO: string, deltaMl: number) => void;
 
+  addManualEntry: (params: Omit<ManualEntry, "id">) => void;
+  removeManualEntry: (dateISO: string, id: string) => void;
+
+  setCustomTargets: (targets: NutritionTargets) => void;
+  clearCustomTargets: () => void;
+
+  setHighContrast: (enabled: boolean) => void;
+  setFontScale: (scale: FontScale) => void;
+
   setReminderEnabled: (id: string, enabled: boolean) => void;
   setReminderInterval: (id: string, interval: ReminderInterval) => void;
   addReminder: (label: string, message: string, intervalMinutes: ReminderInterval) => void;
@@ -58,10 +71,24 @@ export const useAppStore = create<AppState>()(
       recipeCache: {},
       consumedPlan: {},
       waterByDate: {},
+      manualByDate: {},
+      customTargets: null,
+      highContrast: false,
+      fontScale: "100",
 
       setProfile: (profile) => set({ profile }),
       clearProfile: () =>
-        set({ profile: null, favorites: [], plan: [], shoppingChecked: {}, recipeCache: {}, consumedPlan: {}, waterByDate: {} }),
+        set({
+          profile: null,
+          favorites: [],
+          plan: [],
+          shoppingChecked: {},
+          recipeCache: {},
+          consumedPlan: {},
+          waterByDate: {},
+          manualByDate: {},
+          customTargets: null,
+        }),
 
       toggleFavorite: (item) => {
         const { favorites } = get();
@@ -131,6 +158,43 @@ export const useAppStore = create<AppState>()(
         set({ waterByDate: { ...get().waterByDate, [dateISO]: Math.max(0, Math.round(current + deltaMl)) } });
       },
 
+      addManualEntry: (params) => {
+        const entry: ManualEntry = {
+          id: uid("man"),
+          dateISO: params.dateISO,
+          title: params.title,
+          proteinG: Math.max(0, Number(params.proteinG) || 0),
+          carbsG: Math.max(0, Number(params.carbsG) || 0),
+          fatG: Math.max(0, Number(params.fatG) || 0),
+          fiberG: Math.max(0, Number(params.fiberG) || 0),
+        };
+        const current = get().manualByDate[params.dateISO] ?? [];
+        set({ manualByDate: { ...get().manualByDate, [params.dateISO]: [entry, ...current] } });
+      },
+
+      removeManualEntry: (dateISO, id) => {
+        const current = get().manualByDate[dateISO] ?? [];
+        const next = current.filter((e) => e.id !== id);
+        const map = { ...get().manualByDate, [dateISO]: next };
+        if (next.length === 0) delete map[dateISO];
+        set({ manualByDate: map });
+      },
+
+      setCustomTargets: (targets) =>
+        set({
+          customTargets: {
+            proteinG: Math.max(0, Number(targets.proteinG) || 0),
+            fiberG: Math.max(0, Number(targets.fiberG) || 0),
+            waterMl: Math.max(0, Math.round(Number(targets.waterMl) || 0)),
+          },
+        }),
+
+      clearCustomTargets: () => set({ customTargets: null }),
+
+      setHighContrast: (enabled) => set({ highContrast: enabled }),
+
+      setFontScale: (scale) => set({ fontScale: scale }),
+
       setReminderEnabled: (id, enabled) =>
         set({ reminders: get().reminders.map((r) => (r.id === id ? { ...r, enabled } : r)) }),
 
@@ -145,7 +209,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEYS.state,
-      version: 4,
+      version: 5,
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState>;
         return {
@@ -157,6 +221,10 @@ export const useAppStore = create<AppState>()(
           recipeCache: version < 3 ? {} : state.recipeCache ?? {},
           consumedPlan: version < 4 ? {} : state.consumedPlan ?? {},
           waterByDate: version < 4 ? {} : state.waterByDate ?? {},
+          manualByDate: version < 5 ? {} : state.manualByDate ?? {},
+          customTargets: version < 5 ? null : state.customTargets ?? null,
+          highContrast: version < 5 ? false : state.highContrast ?? false,
+          fontScale: version < 5 ? "100" : state.fontScale ?? "100",
         };
       },
       partialize: (state) => ({
@@ -168,6 +236,10 @@ export const useAppStore = create<AppState>()(
         recipeCache: state.recipeCache,
         consumedPlan: state.consumedPlan,
         waterByDate: state.waterByDate,
+        manualByDate: state.manualByDate,
+        customTargets: state.customTargets,
+        highContrast: state.highContrast,
+        fontScale: state.fontScale,
       }),
     },
   ),

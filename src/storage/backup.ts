@@ -30,4 +30,5 @@ export function restoreBackup(raw: unknown) {
 export function resetAll() {
   localStorage.removeItem(STORAGE_KEYS.state);
   localStorage.removeItem(STORAGE_KEYS.apiBase);
+  localStorage.removeItem(STORAGE_KEYS.authToken);
 }

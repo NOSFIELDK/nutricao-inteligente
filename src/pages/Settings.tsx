@@ -3,14 +3,30 @@ import * as React from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
-import type { ReminderInterval } from "@/domain/models";
+import * as SyncApi from "@/api/syncApi";
+import { calcDayMacros } from "@/domain/nutrition/insights";
+import { buildTargets } from "@/domain/nutrition/targets";
+import type { FontScale, NutritionTargets, ReminderInterval } from "@/domain/models";
 import { useTheme } from "@/hooks/useTheme";
 import { createBackup, resetAll, restoreBackup } from "@/storage/backup";
 import { STORAGE_KEYS } from "@/storage/keys";
 import { useAppStore } from "@/store/useAppStore";
+import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
+import { catalog } from "@/data/catalog";
+import { getItem, itemTitle } from "@/domain/catalog";
 
 function download(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadText(filename: string, text: string, mime: string) {
+  const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -36,6 +52,25 @@ export default function SettingsPage() {
   const [newLabel, setNewLabel] = React.useState("");
   const [newMessage, setNewMessage] = React.useState("");
   const [newInterval, setNewInterval] = React.useState<ReminderInterval>(60);
+  const [authEmail, setAuthEmail] = React.useState("");
+  const [authPassword, setAuthPassword] = React.useState("");
+  const [accountEmail, setAccountEmail] = React.useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = React.useState<string | null>(null);
+  const [syncBusy, setSyncBusy] = React.useState(false);
+
+  const profile = useAppStore((s) => s.profile);
+  const plan = useAppStore((s) => s.plan);
+  const recipeCache = useAppStore((s) => s.recipeCache);
+  const consumedPlan = useAppStore((s) => s.consumedPlan);
+  const manualByDate = useAppStore((s) => s.manualByDate);
+  const waterByDate = useAppStore((s) => s.waterByDate);
+  const customTargets = useAppStore((s) => s.customTargets);
+  const setCustomTargets = useAppStore((s) => s.setCustomTargets);
+  const clearCustomTargets = useAppStore((s) => s.clearCustomTargets);
+  const highContrast = useAppStore((s) => s.highContrast);
+  const setHighContrast = useAppStore((s) => s.setHighContrast);
+  const fontScale = useAppStore((s) => s.fontScale);
+  const setFontScale = useAppStore((s) => s.setFontScale);
 
   const reminders = useAppStore((s) => s.reminders);
   const setReminderEnabled = useAppStore((s) => s.setReminderEnabled);
@@ -43,9 +78,140 @@ export default function SettingsPage() {
   const addReminder = useAppStore((s) => s.addReminder);
   const removeReminder = useAppStore((s) => s.removeReminder);
 
+  const baseTargets = React.useMemo(() => buildTargets(profile, null), [profile]);
+  const effectiveTargets = React.useMemo(() => buildTargets(profile, customTargets), [profile, customTargets]);
+  const [proteinTarget, setProteinTarget] = React.useState(String(effectiveTargets.proteinG));
+  const [fiberTarget, setFiberTarget] = React.useState(String(effectiveTargets.fiberG));
+  const [waterTarget, setWaterTarget] = React.useState(String(effectiveTargets.waterMl));
+
+  React.useEffect(() => {
+    setProteinTarget(String(effectiveTargets.proteinG));
+    setFiberTarget(String(effectiveTargets.fiberG));
+    setWaterTarget(String(effectiveTargets.waterMl));
+  }, [effectiveTargets.fiberG, effectiveTargets.proteinG, effectiveTargets.waterMl]);
+
+  React.useEffect(() => {
+    if (!apiBase.trim()) return;
+    if (!localStorage.getItem(STORAGE_KEYS.authToken)) return;
+    SyncApi.me()
+      .then((r) => setAccountEmail(r.email))
+      .catch(() => {
+        SyncApi.logout();
+        setAccountEmail(null);
+      });
+  }, [apiBase]);
+
   const onExport = () => {
     const data = createBackup();
     download(`nutricao-inteligente-backup-${data.createdAtISO.slice(0, 10)}.json`, JSON.stringify(data, null, 2));
+  };
+
+  const onExportCsv = () => {
+    const date = todayISO();
+    const days = Array.from({ length: 14 }).map((_, idx) => addDaysISO(date, -idx)).reverse();
+    const mergedCatalog = [...catalog, ...Object.values(recipeCache)];
+
+    const header = ["dateISO", "proteinG", "carbsG", "fatG", "fiberG", "waterMl", "consumedPlanItems", "planItems", "manualEntries"].join(",");
+    const rows = days.map((d) => {
+      const dayPlan = plan.filter((p) => p.dateISO === d);
+      const dayConsumed = dayPlan.filter((p) => consumedPlan[p.id]);
+      const m = calcDayMacros({ catalog: mergedCatalog, plan: dayConsumed, dateISO: d });
+      const manual = (manualByDate[d] ?? []).reduce(
+        (acc, e) => ({
+          proteinG: acc.proteinG + e.proteinG,
+          carbsG: acc.carbsG + e.carbsG,
+          fatG: acc.fatG + e.fatG,
+          fiberG: acc.fiberG + e.fiberG,
+        }),
+        { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
+      );
+      const proteinG = Math.round((m.proteinG + manual.proteinG) * 10) / 10;
+      const carbsG = Math.round((m.carbsG + manual.carbsG) * 10) / 10;
+      const fatG = Math.round((m.fatG + manual.fatG) * 10) / 10;
+      const fiberG = Math.round((m.fiberG + manual.fiberG) * 10) / 10;
+      const waterMl = waterByDate[d] ?? 0;
+      return [d, proteinG, carbsG, fatG, fiberG, waterMl, dayConsumed.length, dayPlan.length, (manualByDate[d] ?? []).length].join(",");
+    });
+
+    downloadText(`nutricao-inteligente-historico-${date}.csv`, [header, ...rows].join("\n"), "text/csv;charset=utf-8");
+  };
+
+  const onExportPlanCsv = () => {
+    const start = todayISO();
+    const days = Array.from({ length: 7 }).map((_, i) => addDaysISO(start, i));
+    const mergedCatalog = [...catalog, ...Object.values(recipeCache)];
+    const header = ["dateISO", "mealSlot", "title", "servings", "consumed", "type"].join(",");
+    const rows: string[] = [];
+
+    for (const d of days) {
+      const dayPlan = plan.filter((p) => p.dateISO === d);
+      for (const p of dayPlan) {
+        const item = getItem(mergedCatalog, { type: p.itemType, id: p.itemId });
+        const title = item ? itemTitle(item).replace(/"/g, '""') : "Item";
+        rows.push([d, mealSlotLabel(p.mealSlot), `"${title}"`, p.servings, consumedPlan[p.id] ? "1" : "0", p.itemType].join(","));
+      }
+      for (const e of manualByDate[d] ?? []) {
+        const title = e.title.replace(/"/g, '""');
+        rows.push([d, "Manual", `"${title}"`, 1, "1", "manual"].join(","));
+      }
+    }
+
+    downloadText(`nutricao-inteligente-plano-${start}.csv`, [header, ...rows].join("\n"), "text/csv;charset=utf-8");
+  };
+
+  const onPrintSummary = () => {
+    const start = todayISO();
+    const days = Array.from({ length: 7 }).map((_, i) => addDaysISO(start, i));
+    const mergedCatalog = [...catalog, ...Object.values(recipeCache)];
+    const html = `
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nutrição Inteligente — Resumo</title>
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;margin:24px;color:#111}
+      h1{margin:0 0 6px 0;font-size:20px}
+      h2{margin:18px 0 8px 0;font-size:14px}
+      table{width:100%;border-collapse:collapse;margin-top:8px}
+      th,td{border:1px solid #ddd;padding:8px;font-size:12px;text-align:left;vertical-align:top}
+      th{background:#f4f4f4}
+      .muted{color:#555;font-size:12px}
+    </style>
+  </head>
+  <body>
+    <h1>Nutrição Inteligente — Plano semanal</h1>
+    <div class="muted">Semana iniciando em ${start}</div>
+    <table>
+      <thead><tr><th>Dia</th><th>Refeição</th><th>Item</th><th>Porções</th><th>Consumido</th></tr></thead>
+      <tbody>${days
+        .map((d) => {
+          const dayPlan = plan.filter((p) => p.dateISO === d);
+          const items = dayPlan
+            .map((p) => {
+              const item = getItem(mergedCatalog, { type: p.itemType, id: p.itemId });
+              const title = item ? itemTitle(item) : "Item";
+              const consumed = consumedPlan[p.id] ? "Sim" : "Não";
+              return `<tr><td>${d}</td><td>${mealSlotLabel(p.mealSlot)}</td><td>${title}</td><td>${p.servings}</td><td>${consumed}</td></tr>`;
+            })
+            .join("");
+          const manual = (manualByDate[d] ?? [])
+            .map((e) => `<tr><td>${d}</td><td>Manual</td><td>${e.title}</td><td>1</td><td>Sim</td></tr>`)
+            .join("");
+          return items + manual;
+        })
+        .join("")}</tbody>
+    </table>
+  </body>
+</html>`;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
   };
 
   const onImport = async (file: File | null) => {
@@ -98,6 +264,15 @@ export default function SettingsPage() {
     addReminder(newLabel.trim(), newMessage.trim(), newInterval);
     setNewLabel("");
     setNewMessage("");
+  };
+
+  const onSaveTargets = () => {
+    const next: NutritionTargets = {
+      proteinG: Number(proteinTarget) || 0,
+      fiberG: Number(fiberTarget) || 0,
+      waterMl: Number(waterTarget) || 0,
+    };
+    setCustomTargets(next);
   };
 
   return (
@@ -153,6 +328,9 @@ export default function SettingsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button onClick={onExport}>Exportar</Button>
+              <Button variant="secondary" onClick={onExportCsv}>CSV (histórico)</Button>
+              <Button variant="secondary" onClick={onExportPlanCsv}>CSV (plano)</Button>
+              <Button variant="secondary" onClick={onPrintSummary}>Imprimir (PDF)</Button>
               <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg bg-card-2 px-4 text-sm font-medium text-fg ring-1 ring-border shadow-crisp transition hover:bg-card active:translate-y-px active:shadow-none">
                 Importar
                 <input
@@ -164,6 +342,60 @@ export default function SettingsPage() {
               </label>
             </div>
             {importError ? <div className="text-sm font-medium text-red-500">{importError}</div> : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Metas</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="text-sm text-muted">
+              Metas automáticas (base): proteína {Math.round(baseTargets.proteinG)}g, fibras {baseTargets.fiberG}g, água {baseTargets.waterMl}ml.
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <TextField label="Proteína (g)" inputMode="decimal" value={proteinTarget} onChange={(e) => setProteinTarget(e.target.value)} />
+              <TextField label="Fibras (g)" inputMode="decimal" value={fiberTarget} onChange={(e) => setFiberTarget(e.target.value)} />
+              <TextField label="Água (ml)" inputMode="numeric" value={waterTarget} onChange={(e) => setWaterTarget(e.target.value)} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={onSaveTargets}>Salvar metas</Button>
+              <Button variant="secondary" onClick={clearCustomTargets} disabled={!customTargets}>
+                Usar automático
+              </Button>
+              <div className="text-xs text-muted self-center">
+                Ativas: proteína {Math.round(effectiveTargets.proteinG)}g · fibras {effectiveTargets.fiberG}g · água {effectiveTargets.waterMl}ml
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Acessibilidade</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-card-2/50 p-3 ring-1 ring-border">
+              <div className="text-sm text-fg/90">Alto contraste</div>
+              <input
+                type="checkbox"
+                checked={highContrast}
+                onChange={(e) => setHighContrast(e.target.checked)}
+                className="h-4 w-4 accent-[hsl(var(--accent))]"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-medium text-fg/90">Tamanho da fonte</span>
+              <select
+                value={fontScale}
+                onChange={(e) => setFontScale(e.target.value as FontScale)}
+                className="h-11 w-full appearance-none rounded-lg bg-card/70 px-3 text-sm text-fg ring-1 ring-border shadow-crisp outline-none transition focus:ring-2 focus:ring-accent/35"
+              >
+                <option value="100">Padrão</option>
+                <option value="112">Maior</option>
+                <option value="125">Muito maior</option>
+              </select>
+            </label>
           </CardContent>
         </Card>
 
