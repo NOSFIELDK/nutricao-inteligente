@@ -5,6 +5,7 @@ compatibility_date = "2026-06-01"
 [vars]
 MEALDB_BASE = "https://www.themealdb.com/api/json/v1/1"
 FDC_BASE = "https://api.nal.usda.gov/fdc/v1"
+CORS_ORIGINS = "https://nosfieldk.github.io,http://localhost:5173"
 
 [[kv_namespaces]]
 binding = "NUTRI_KV"
@@ -13,7 +14,7 @@ id = "13948453571142b1b323012f0f13c341"
 [[d1_databases]]
 binding = "DB"
 database_name = "nutricao-inteligente"
-database_id = "REPLACE_ME"
+database_id = "d1dd4a49-7601-41e3-b718-79792fd4a42c"
 
 [ai]
 binding = "AI"

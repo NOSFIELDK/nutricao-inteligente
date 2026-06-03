@@ -7,6 +7,7 @@ type Env = {
   USDA_API_KEY?: string;
   MEALDB_BASE?: string;
   FDC_BASE?: string;
+  CORS_ORIGINS?: string;
 };
 
 type Macros = {
@@ -44,28 +45,55 @@ type MealDbRecipe = {
   [k: string]: unknown;
 };
 
-function json<T>(data: T, init?: ResponseInit) {
+function corsAllowOrigin(req: Request, env: Env) {
+  const origin = req.headers.get("origin") ?? "";
+  const raw = (env.CORS_ORIGINS ?? "").trim();
+  if (!raw) return "*";
+  if (!origin) return "";
+  const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return allowed.includes(origin) ? origin : "";
+}
+
+function corsHeaders(req: Request, env: Env) {
+  const allowOrigin = corsAllowOrigin(req, env);
+  const headers: Record<string, string> = {
+    "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization",
+    "access-control-max-age": "86400",
+  };
+  if (allowOrigin) headers["access-control-allow-origin"] = allowOrigin;
+  if (allowOrigin && allowOrigin !== "*") headers["vary"] = "Origin";
+  return headers;
+}
+
+function json<T>(data: T, init?: ResponseInit, req?: Request, env?: Env) {
+  const cors = req && env ? corsHeaders(req, env) : {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization",
+    "access-control-max-age": "86400",
+  };
   return new Response(JSON.stringify(data), {
     ...init,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization",
-      "access-control-max-age": "86400",
+      ...cors,
       ...(init?.headers ?? {}),
     },
   });
 }
 
-function noContent() {
+function noContent(req?: Request, env?: Env) {
+  const cors = req && env ? corsHeaders(req, env) : {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization",
+    "access-control-max-age": "86400",
+  };
   return new Response(null, {
     status: 204,
     headers: {
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization",
-      "access-control-max-age": "86400",
+      ...cors,
     },
   });
 }
@@ -78,8 +106,8 @@ function round1(n: number) {
   return Math.round(n * 10) / 10;
 }
 
-function methodNotAllowed() {
-  return json({ error: "method_not_allowed" }, { status: 405 });
+function methodNotAllowed(req?: Request, env?: Env) {
+  return json({ error: "method_not_allowed" }, { status: 405 }, req, env);
 }
 
 function normalizeKey(s: string) {
@@ -379,20 +407,20 @@ function normalizeRecipe(
   };
 }
 
-function notFound() {
-  return json({ error: "not_found" }, { status: 404 });
+function notFound(req?: Request, env?: Env) {
+  return json({ error: "not_found" }, { status: 404 }, req, env);
 }
 
-function badRequest(message: string) {
-  return json({ error: "bad_request", message }, { status: 400 });
+function badRequest(message: string, req?: Request, env?: Env) {
+  return json({ error: "bad_request", message }, { status: 400 }, req, env);
 }
 
-function internalError(message: string) {
-  return json({ error: "internal_error", message }, { status: 500 });
+function internalError(message: string, req?: Request, env?: Env) {
+  return json({ error: "internal_error", message }, { status: 500 }, req, env);
 }
 
-function unauthorized(message = "unauthorized") {
-  return json({ error: "unauthorized", message }, { status: 401 });
+function unauthorized(message = "unauthorized", req?: Request, env?: Env) {
+  return json({ error: "unauthorized", message }, { status: 401 }, req, env);
 }
 
 function normalizeEmail(email: string) {
@@ -418,11 +446,11 @@ function fromHex(hex: string) {
   return out;
 }
 
-async function hashPassword(password: string, saltHex?: string) {
+async function hashPassword(password: string, params?: { saltHex?: string; iterations?: number }) {
   const enc = new TextEncoder();
-  const salt = saltHex ? fromHex(saltHex) : null;
+  const salt = params?.saltHex ? fromHex(params.saltHex) : null;
   const saltBytes = salt ?? crypto.getRandomValues(new Uint8Array(16));
-  const iterations = 120_000;
+  const iterations = Math.max(10_000, params?.iterations ?? 120_000);
 
   const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
@@ -442,6 +470,19 @@ function bearerToken(req: Request) {
   const h = req.headers.get("authorization") ?? "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() ?? "";
+}
+
+function clientIp(req: Request) {
+  return (req.headers.get("cf-connecting-ip") ?? "").trim();
+}
+
+async function rateLimit(env: Env, key: string, limit: number, ttlSeconds: number) {
+  const k = `rl:${key}`;
+  const raw = await env.NUTRI_KV.get(k);
+  const current = Number(raw ?? "0") || 0;
+  if (current >= limit) return false;
+  await env.NUTRI_KV.put(k, String(current + 1), { expirationTtl: ttlSeconds });
+  return true;
 }
 
 async function requireSession(req: Request, env: Env) {
@@ -470,6 +511,10 @@ async function handleRegister(req: Request, env: Env) {
   const password = body?.password ?? "";
   if (!email || !password || password.length < 8) return badRequest("email/password inválidos (senha min 8).");
 
+  const ip = clientIp(req);
+  if (ip && !(await rateLimit(env, `register:ip:${ip}`, 12, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+  if (!(await rateLimit(env, `register:email:${email}`, 6, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+
   const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: string }>();
   if (existing?.id) return json({ error: "email_taken" }, { status: 409 });
 
@@ -481,13 +526,14 @@ async function handleRegister(req: Request, env: Env) {
     .bind(userId, email, hashHex, saltHex, iterations, now)
     .run();
 
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
   const token = randomTokenHex(32);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
   await env.DB.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)")
     .bind(token, userId, expiresAt)
     .run();
 
-  return json({ ok: true, token, expiresAt });
+  return json({ ok: true, token, expiresAt }, undefined, req, env);
 }
 
 async function handleLogin(req: Request, env: Env) {
@@ -497,21 +543,26 @@ async function handleLogin(req: Request, env: Env) {
   const password = body?.password ?? "";
   if (!email || !password) return badRequest("missing email/password");
 
-  const user = await env.DB.prepare("SELECT id, pw_hash as hashHex, pw_salt as saltHex FROM users WHERE email = ?")
+  const ip = clientIp(req);
+  if (ip && !(await rateLimit(env, `login:ip:${ip}`, 20, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+  if (!(await rateLimit(env, `login:email:${email}`, 10, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+
+  const user = await env.DB.prepare("SELECT id, pw_hash as hashHex, pw_salt as saltHex, pw_iter as iterations FROM users WHERE email = ?")
     .bind(email)
-    .first<{ id: string; hashHex: string; saltHex: string }>();
-  if (!user?.id) return unauthorized("invalid_credentials");
+    .first<{ id: string; hashHex: string; saltHex: string; iterations: number }>();
+  if (!user?.id) return unauthorized("invalid_credentials", req, env);
 
-  const derived = await hashPassword(password, user.saltHex);
-  if (derived.hashHex !== user.hashHex) return unauthorized("invalid_credentials");
+  const derived = await hashPassword(password, { saltHex: user.saltHex, iterations: user.iterations });
+  if (derived.hashHex !== user.hashHex) return unauthorized("invalid_credentials", req, env);
 
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
   const token = randomTokenHex(32);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
   await env.DB.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)")
     .bind(token, user.id, expiresAt)
     .run();
 
-  return json({ ok: true, token, expiresAt });
+  return json({ ok: true, token, expiresAt }, undefined, req, env);
 }
 
 async function handleMe(req: Request, env: Env) {
@@ -519,22 +570,32 @@ async function handleMe(req: Request, env: Env) {
   const s = await requireSession(req, env);
   if (!s.ok) return s.res;
   const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(s.userId).first<{ email: string }>();
-  return json({ ok: true, email: user?.email ?? "" });
+  return json({ ok: true, email: user?.email ?? "" }, undefined, req, env);
 }
 
 async function handleSyncPush(req: Request, env: Env) {
   if (!env.DB) return internalError("db_not_configured");
   const s = await requireSession(req, env);
   if (!s.ok) return s.res;
+  const ip = clientIp(req);
+  if (ip && !(await rateLimit(env, `sync:ip:${ip}`, 60, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
   const raw = await req.text();
-  if (!raw) return badRequest("missing body");
+  if (!raw) return badRequest("missing body", req, env);
+  if (raw.length > 250_000) return json({ error: "payload_too_large" }, { status: 413 }, req, env);
+  let normalized = "";
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    normalized = JSON.stringify(parsed);
+  } catch {
+    return badRequest("invalid_json", req, env);
+  }
   const now = new Date().toISOString();
   await env.DB.prepare(
     "INSERT INTO sync_data (user_id, data, updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
   )
-    .bind(s.userId, raw, now)
+    .bind(s.userId, normalized, now)
     .run();
-  return json({ ok: true, updatedAt: now });
+  return json({ ok: true, updatedAt: now }, undefined, req, env);
 }
 
 async function handleSyncPull(req: Request, env: Env) {
@@ -544,8 +605,8 @@ async function handleSyncPull(req: Request, env: Env) {
   const row = await env.DB.prepare("SELECT data, updated_at as updatedAt FROM sync_data WHERE user_id = ?")
     .bind(s.userId)
     .first<{ data: string; updatedAt: string }>();
-  if (!row?.data) return json({ ok: true, data: null, updatedAt: null });
-  return json({ ok: true, data: row.data, updatedAt: row.updatedAt });
+  if (!row?.data) return json({ ok: true, data: null, updatedAt: null }, undefined, req, env);
+  return json({ ok: true, data: row.data, updatedAt: row.updatedAt }, undefined, req, env);
 }
 
 async function getOrComputeNormalizedRecipe(env: Env, meal: MealDbRecipe) {
@@ -663,48 +724,50 @@ async function handleGetById(req: Request, env: Env) {
 export default {
   async fetch(req: Request, env: Env) {
     try {
-      if (req.method === "OPTIONS") return noContent();
+      if (req.method === "OPTIONS") return noContent(req, env);
       const url = new URL(req.url);
-      if (!url.pathname.startsWith("/api/")) return notFound();
+      if (!url.pathname.startsWith("/api/")) return notFound(req, env);
 
       if (url.pathname === "/api/recipes/search") {
-        if (req.method !== "GET") return methodNotAllowed();
+        if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleSearch(req, env);
       }
       if (url.pathname.startsWith("/api/recipes/")) {
-        if (req.method !== "GET") return methodNotAllowed();
+        if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleGetById(req, env);
       }
 
       if (url.pathname === "/api/auth/register") {
-        if (req.method !== "POST") return methodNotAllowed();
+        if (req.method !== "POST") return methodNotAllowed(req, env);
         return await handleRegister(req, env);
       }
       if (url.pathname === "/api/auth/login") {
-        if (req.method !== "POST") return methodNotAllowed();
+        if (req.method !== "POST") return methodNotAllowed(req, env);
         return await handleLogin(req, env);
       }
       if (url.pathname === "/api/auth/me") {
-        if (req.method !== "GET") return methodNotAllowed();
+        if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleMe(req, env);
       }
 
       if (url.pathname === "/api/sync/push") {
-        if (req.method !== "POST") return methodNotAllowed();
+        if (req.method !== "POST") return methodNotAllowed(req, env);
         return await handleSyncPush(req, env);
       }
       if (url.pathname === "/api/sync/pull") {
-        if (req.method !== "GET") return methodNotAllowed();
+        if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleSyncPull(req, env);
       }
 
-      return notFound();
+      return notFound(req, env);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("[worker error]", message);
       return json(
         { error: "internal_error", message, hint: "Retry — this is usually a cold-start timeout." },
         { status: 500 },
+        req,
+        env,
       );
     }
   },

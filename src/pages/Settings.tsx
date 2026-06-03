@@ -275,7 +275,7 @@ export default function SettingsPage() {
     setCustomTargets(next);
   };
 
-  const apiConfigured = React.useMemo(() => SyncApi.hasRemoteApi(), []);
+  const apiConfigured = Boolean(apiBase.trim());
 
   const refreshMe = React.useCallback(() => {
     if (!apiConfigured) return;
