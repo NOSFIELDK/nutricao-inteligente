@@ -7,6 +7,8 @@ import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
+import { calcDayMacros } from "@/domain/nutrition/insights";
+import { buildTargets } from "@/domain/nutrition/targets";
 import type { CatalogItem, MealSlot, Recommendation } from "@/domain/models";
 import { recommendCatalog } from "@/domain/recommend/recommend";
 import { useAppStore } from "@/store/useAppStore";
@@ -26,8 +28,25 @@ function tabMatches(tab: Tab, item: CatalogItem) {
   return item.type === "recipe" ? item.category === "performance" : item.tags.includes("highProtein") || item.tags.includes("preWorkout") || item.tags.includes("postWorkout");
 }
 
+function clamp01(n: number) {
+  return Math.min(1, Math.max(0, n));
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="h-2 w-full rounded-full bg-card-2 ring-1 ring-border">
+      <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(clamp01(value) * 100)}%` }} />
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const profile = useAppStore((s) => s.profile);
+  const plan = useAppStore((s) => s.plan);
+  const recipeCache = useAppStore((s) => s.recipeCache);
+  const consumedPlan = useAppStore((s) => s.consumedPlan);
+  const waterByDate = useAppStore((s) => s.waterByDate);
+  const addWater = useAppStore((s) => s.addWater);
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const isFavorite = useAppStore((s) => s.isFavorite);
   const addToPlan = useAppStore((s) => s.addToPlan);
@@ -42,6 +61,17 @@ export default function DashboardPage() {
     const all = recommendCatalog(profile, catalog, 40);
     return all.filter((r) => tabMatches(tab, r.item)).slice(0, 12);
   }, [profile, tab]);
+
+  const mergedCatalog = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
+  const today = todayISO();
+  const consumedTodayPlan = React.useMemo(() => {
+    return plan.filter((p) => p.dateISO === today).filter((p) => consumedPlan[p.id]);
+  }, [consumedPlan, plan, today]);
+  const todayMacros = React.useMemo(() => {
+    return calcDayMacros({ catalog: mergedCatalog, plan: consumedTodayPlan, dateISO: today });
+  }, [consumedTodayPlan, mergedCatalog, today]);
+  const targets = React.useMemo(() => buildTargets(profile), [profile]);
+  const waterMl = waterByDate[today] ?? 0;
 
   const openAdd = (item: CatalogItem) => {
     setSelected(item);
@@ -89,6 +119,53 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-display text-xl tracking-tight text-fg">Hoje</div>
+                <div className="mt-1 text-sm text-muted">Progresso baseado no que você marcou como consumido no Plano.</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={() => addWater(today, 250)}>
+                  +250ml
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => addWater(today, 500)}>
+                  +500ml
+                </Button>
+                <Link
+                  to="/historico"
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-card-2 px-3 text-sm font-medium text-fg ring-1 ring-border transition hover:bg-card"
+                >
+                  Histórico
+                </Link>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                <div className="text-xs font-medium text-fg/90">Proteína</div>
+                <div className="text-sm text-muted">
+                  {todayMacros.proteinG}g / {targets.proteinG}g
+                </div>
+                <ProgressBar value={targets.proteinG > 0 ? todayMacros.proteinG / targets.proteinG : 0} />
+              </div>
+              <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                <div className="text-xs font-medium text-fg/90">Fibras</div>
+                <div className="text-sm text-muted">
+                  {todayMacros.fiberG}g / {targets.fiberG}g
+                </div>
+                <ProgressBar value={targets.fiberG > 0 ? todayMacros.fiberG / targets.fiberG : 0} />
+              </div>
+              <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                <div className="text-xs font-medium text-fg/90">Água</div>
+                <div className="text-sm text-muted">
+                  {Math.round(waterMl / 250) * 250}ml / {targets.waterMl}ml
+                </div>
+                <ProgressBar value={targets.waterMl > 0 ? waterMl / targets.waterMl : 0} />
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {(["saude", "doencas", "performance"] as Tab[]).map((t) => (
               <Chip key={t} active={tab === t} onClick={() => setTab(t)} type="button">
