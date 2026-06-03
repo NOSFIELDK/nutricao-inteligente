@@ -12,6 +12,7 @@ import { buildTargets } from "@/domain/nutrition/targets";
 import { recommendCatalog } from "@/domain/recommend/recommend";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
+import { LeifSays } from "@/components/LeifSays";
 
 const slots: MealSlot[] = ["cafe", "almoco", "lanche", "jantar"];
 
@@ -167,11 +168,17 @@ export default function PlanPage() {
       </div>
 
       {!profile && (
-        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up flex items-center justify-between gap-4">
-          <div className="text-sm text-muted">Forje seu guerreiro para desbloquear "Gerar semana" e recomendações personalizadas.</div>
-          <Link to="/perfil" className="shrink-0 inline-flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02]">
-            Criar perfil
-          </Link>
+        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up">
+          <LeifSays
+            mood="warn"
+            size="sm"
+            message="Forje seu guerreiro para desbloquear a conquista semanal e recomendações personalizadas."
+          />
+          <div className="mt-3 flex justify-end">
+            <Link to="/perfil" className="shrink-0 inline-flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02]">
+              ⚔️ Forjar Guerreiro
+            </Link>
+          </div>
         </div>
       )}
 
