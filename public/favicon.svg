@@ -1,4 +1,9 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="32" height="32" fill="#0A0B0D"/>
-<path d="M26.6677 23.7149H8.38057V20.6496H5.33301V8.38159H26.6677V23.7149ZM8.38057 20.6496H23.6201V11.4482H8.38057V20.6496ZM16.0011 16.0021L13.8461 18.1705L11.6913 16.0021L13.8461 13.8337L16.0011 16.0021ZM22.0963 16.0008L19.9414 18.1691L17.7865 16.0008L19.9414 13.8324L22.0963 16.0008Z" fill="#32F08C"/>
+  <rect width="32" height="32" rx="8" fill="#3C6E47"/>
+  <!-- Escudo Viking -->
+  <path d="M16 4 L26 8.5 L26 18 Q26 25 16 29 Q6 25 6 18 L6 8.5 Z" fill="#2A5235" stroke="#E67E22" stroke-width="1.2"/>
+  <!-- Cruz nórdica -->
+  <line x1="16" y1="10" x2="16" y2="23" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round"/>
+  <line x1="10" y1="16.5" x2="22" y2="16.5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="16" cy="16.5" r="2.5" fill="#E67E22"/>
 </svg>
