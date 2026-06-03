@@ -1,5 +1,5 @@
 import * as React from "react";
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import { AppShell } from "@/components/AppShell";
 import { ReminderBanner } from "@/components/ReminderBanner";
@@ -53,7 +53,7 @@ export default function App() {
     <>
       <AccessibilitySync />
       <SyncManager />
-      <Router>
+      <Router basename={import.meta.env.BASE_URL}>
         <React.Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<RootRedirect />} />

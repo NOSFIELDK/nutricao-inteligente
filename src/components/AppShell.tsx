@@ -44,7 +44,7 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <img
-        src="/nutricao-inteligente/logo.png"
+        src={`${import.meta.env.BASE_URL}logo.png`}
         alt="LeifNutri"
         className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
         loading="eager"

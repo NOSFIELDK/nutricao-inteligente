@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LeifNutri</title>
+    <!--
+      GitHub Pages SPA fallback — técnica spa-github-pages.
+      Quando o GitHub Pages recebe uma URL como /nutricao-inteligente/receitas
+      e não encontra o arquivo, cai aqui. Redirecionamos para index.html
+      codificando o path como query string para o script em index.html restaurar.
+      pathSegmentsToKeep = 1 porque o repo está em /nutricao-inteligente/
+    -->
+    <script>
+      var pathSegmentsToKeep = 1;
+      var l = window.location;
+      l.replace(
+        l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "") +
+        l.pathname.split("/").slice(0, 1 + pathSegmentsToKeep).join("/") + "/?/" +
+        l.pathname.slice(1).split("/").slice(pathSegmentsToKeep).join("/").replace(/&/g, "~and~") +
+        (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+        l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
