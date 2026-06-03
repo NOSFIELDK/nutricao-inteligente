@@ -26,16 +26,12 @@ const nav: NavItem[] = [
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      {/* mix-blend-mode:multiply dissolve o branco no fundo claro
-          dark:mix-blend-mode:normal mantém visível no modo escuro */}
-      <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full shadow-crisp ring-2 ring-accent/50">
-        <img
-          src="/nutricao-inteligente/logo.png"
-          alt="LeifNutri"
-          className="h-full w-full scale-[1.12] object-cover [mix-blend-mode:multiply] dark:[mix-blend-mode:normal]"
-          loading="eager"
-        />
-      </div>
+      <img
+        src="/nutricao-inteligente/logo.png"
+        alt="LeifNutri"
+        className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+        loading="eager"
+      />
       <div className="leading-none">
         <div className="font-display text-sm font-black tracking-wide">
           <span className="text-fg">Leif</span><span className="text-accent">Nutri</span>
