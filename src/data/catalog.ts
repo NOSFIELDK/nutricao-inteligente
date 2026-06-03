@@ -1,21 +1,30 @@
 import type { CatalogItem, FoodSuggestion, Recipe, Supplement } from "@/domain/models";
 
-function img(prompt: string, imageSize: string) {
-  let h = 0;
-  for (let i = 0; i < prompt.length; i++) h = (Math.imul(31, h) + prompt.charCodeAt(i)) | 0;
-  const seededPrompt = `${prompt}, seed ${Math.abs(h)}`;
-  return `https://coreva-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(seededPrompt)}&image_size=${encodeURIComponent(imageSize)}`;
-}
+const RECIPE_IMAGES: Record<string, string> = {
+  "rec_salmon_bowl": "https://www.themealdb.com/images/media/meals/ikizdm1763760862.jpg",
+  "rec_chicken_quinoa": "https://www.themealdb.com/images/media/meals/wyxwsp1486979827.jpg",
+  "rec_oats_yogurt": "https://www.themealdb.com/images/media/meals/sng9bm1765320170.jpg",
+  "rec_lentil_soup": "https://www.themealdb.com/images/media/meals/vpxyqt1511464175.jpg",
+  "rec_tofu_stir": "https://www.themealdb.com/images/media/meals/1525874812.jpg",
+  "rec_egg_salad": "https://www.themealdb.com/images/media/meals/zry07j1763779321.jpg",
+  "rec_lowcarb_bowl": "https://www.themealdb.com/images/media/meals/pbzcrx1763765096.jpg",
+  "rec_baked_fish": "https://www.themealdb.com/images/media/meals/ysxwuq1487323065.jpg",
+  "rec_green_smoothie": "https://www.themealdb.com/images/media/meals/sng9bm1765320170.jpg",
+  "rec_acai_bowl": "https://www.themealdb.com/images/media/meals/sywswr1511383814.jpg",
+  "rec_beans_rice_egg": "https://www.themealdb.com/images/media/meals/5r5rvx1763287943.jpg",
+  "rec_protein_pancakes": "https://www.themealdb.com/images/media/meals/rwuyqx1511383174.jpg",
+  "rec_mediterranean_salad": "https://www.themealdb.com/images/media/meals/u5e9qq1763795441.jpg",
+  "rec_vegan_curry": "https://www.themealdb.com/images/media/meals/sstssx1487349585.jpg",
+  "rec_sweet_potato_chicken": "https://www.themealdb.com/images/media/meals/vuyssv1511450024.jpg"
+};
 
 export const recipes: Recipe[] = [
   {
     id: "rec_salmon_bowl",
     type: "recipe",
     title: "Bowl de salmão, arroz integral e folhas crocantes",
-    imageUrl: img(
-      "editorial food photo, salmon bowl with brown rice, avocado, cucumber, leafy greens, citrus dressing, dark moody background, soft side light, 35mm, high detail, realistic",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_salmon_bowl"],
     category: "saude",
     tags: ["highProtein", "highFiber", "glutenFree", "lowSodium", "hydration"],
     prepMinutes: 25,
@@ -50,10 +59,8 @@ export const recipes: Recipe[] = [
     id: "rec_chicken_quinoa",
     type: "recipe",
     title: "Frango com quinoa e legumes assados",
-    imageUrl: img(
-      "realistic food photography, chicken breast with quinoa and roasted vegetables, carrots, broccoli, olive oil sheen, rustic plate, warm highlights, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_chicken_quinoa"],
     category: "performance",
     tags: ["highProtein", "highFiber", "glutenFree", "lowSodium"],
     prepMinutes: 35,
@@ -88,10 +95,8 @@ export const recipes: Recipe[] = [
     id: "rec_oats_yogurt",
     type: "recipe",
     title: "Overnight oats sem lactose com frutas vermelhas",
-    imageUrl: img(
-      "editorial breakfast photo, overnight oats jar with berries, chia seeds, spoon, morning light, minimal styling, high detail, realistic",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_oats_yogurt"],
     category: "saude",
     tags: ["highFiber", "lowGI", "lactoseFree", "vegetarian"],
     prepMinutes: 8,
@@ -119,10 +124,8 @@ export const recipes: Recipe[] = [
     id: "rec_lentil_soup",
     type: "recipe",
     title: "Sopa de lentilha com limão e ervas",
-    imageUrl: img(
-      "realistic food photo, lentil soup bowl with herbs and lemon zest, steam, dark ceramic bowl, moody lighting, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_lentil_soup"],
     category: "tratamento",
     tags: ["highFiber", "lowGI", "vegan", "ironRich", "lowSodium"],
     prepMinutes: 40,
@@ -156,10 +159,8 @@ export const recipes: Recipe[] = [
     id: "rec_tofu_stir",
     type: "recipe",
     title: "Tofu dourado com vegetais e gengibre",
-    imageUrl: img(
-      "realistic asian stir fry photo, crispy tofu cubes with colorful vegetables, ginger, sesame, glossy sauce, dark background, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_tofu_stir"],
     category: "performance",
     tags: ["highProtein", "vegan", "lowSodium", "glutenFree", "lowCarb"],
     prepMinutes: 25,
@@ -184,10 +185,8 @@ export const recipes: Recipe[] = [
     id: "rec_egg_salad",
     type: "recipe",
     title: "Salada morna de ovos, grão-de-bico e espinafre",
-    imageUrl: img(
-      "realistic salad photo, warm egg salad with chickpeas and spinach, olive oil, lemon, rustic bowl, soft light, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_egg_salad"],
     category: "saude",
     tags: ["highProtein", "highFiber", "lowGI", "vegetarian", "ironRich"],
     prepMinutes: 18,
@@ -208,10 +207,8 @@ export const recipes: Recipe[] = [
     id: "rec_lowcarb_bowl",
     type: "recipe",
     title: "Bowl low carb de carne magra e couve-flor",
-    imageUrl: img(
-      "realistic food photo, low carb bowl with lean beef strips and cauliflower rice, herbs, dark plate, dramatic lighting, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_lowcarb_bowl"],
     category: "performance",
     tags: ["highProtein", "lowCarb", "glutenFree", "lowSodium"],
     prepMinutes: 22,
@@ -232,10 +229,8 @@ export const recipes: Recipe[] = [
     id: "rec_baked_fish",
     type: "recipe",
     title: "Peixe assado com ervas e batata-doce",
-    imageUrl: img(
-      "realistic food photography, baked white fish with herbs, sweet potato wedges, lemon, minimalist plating, warm light, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_baked_fish"],
     category: "tratamento",
     tags: ["highProtein", "glutenFree", "lowSodium", "energy"],
     prepMinutes: 35,
@@ -256,10 +251,8 @@ export const recipes: Recipe[] = [
     id: "rec_green_smoothie",
     type: "recipe",
     title: "Shake verde pós-treino (sem lactose)",
-    imageUrl: img(
-      "realistic smoothie photo, green protein smoothie in glass, banana, oats, spinach, peanut butter on side, gym vibe, high detail",
-      "landscape_16_9",
-    ),
+    // replaced-start
+    imageUrl: RECIPE_IMAGES["rec_green_smoothie"],
     category: "performance",
     tags: ["highProtein", "lactoseFree", "postWorkout", "energy", "highFiber"],
     prepMinutes: 6,
@@ -288,7 +281,7 @@ export const recipes: Recipe[] = [
     id: "rec_acai_bowl",
     type: "recipe",
     title: "Açaí bowl antioxidante com granola e frutas",
-    imageUrl: img("acai bowl granola berries banana top view colorful", "landscape_16_9"),
+    imageUrl: RECIPE_IMAGES["rec_acai_bowl"],
     category: "saude",
     tags: ["highFiber", "vegan", "glutenFree", "energy"],
     prepMinutes: 10,
@@ -321,7 +314,7 @@ export const recipes: Recipe[] = [
     id: "rec_beans_rice_egg",
     type: "recipe",
     title: "Arroz integral, feijão carioca e ovo estrelado",
-    imageUrl: img("rice beans fried egg Brazilian plate top view rustic", "landscape_16_9"),
+    imageUrl: RECIPE_IMAGES["rec_beans_rice_egg"],
     category: "saude",
     tags: ["highProtein", "highFiber", "ironRich", "glutenFree", "lactoseFree"],
     prepMinutes: 20,
@@ -355,7 +348,7 @@ export const recipes: Recipe[] = [
     id: "rec_protein_pancakes",
     type: "recipe",
     title: "Panqueca proteica de aveia e banana",
-    imageUrl: img("protein pancakes oat banana stack syrup top view", "landscape_16_9"),
+    imageUrl: RECIPE_IMAGES["rec_protein_pancakes"],
     category: "performance",
     tags: ["highProtein", "lactoseFree", "glutenFree", "preWorkout", "energy"],
     prepMinutes: 15,
@@ -390,7 +383,7 @@ export const recipes: Recipe[] = [
     id: "rec_mediterranean_salad",
     type: "recipe",
     title: "Salada mediterrânea com grão-de-bico e feta",
-    imageUrl: img("mediterranean salad chickpeas feta olives tomato bowl", "landscape_16_9"),
+    imageUrl: RECIPE_IMAGES["rec_mediterranean_salad"],
     category: "tratamento",
     tags: ["vegetarian", "glutenFree", "lowGI", "lowSodium", "highFiber", "ironRich"],
     prepMinutes: 15,
@@ -425,7 +418,7 @@ export const recipes: Recipe[] = [
     id: "rec_vegan_curry",
     type: "recipe",
     title: "Curry vegano de grão-de-bico com arroz de couve-flor",
-    imageUrl: img("vegan chickpea curry cauliflower rice bowl yellow sauce", "landscape_16_9"),
+    imageUrl: RECIPE_IMAGES["rec_vegan_curry"],
     category: "saude",
     tags: ["vegan", "glutenFree", "lactoseFree", "highFiber", "lowGI", "ironRich"],
     prepMinutes: 30,
@@ -462,7 +455,7 @@ export const recipes: Recipe[] = [
     id: "rec_sweet_potato_chicken",
     type: "recipe",
     title: "Frango grelhado com batata-doce e brócolis",
-    imageUrl: img("grilled chicken sweet potato broccoli meal prep plate", "landscape_16_9"),
+    imageUrl: RECIPE_IMAGES["rec_sweet_potato_chicken"],
     category: "performance",
     tags: ["highProtein", "highFiber", "glutenFree", "lactoseFree", "postWorkout"],
     prepMinutes: 35,
