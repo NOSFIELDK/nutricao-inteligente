@@ -32,7 +32,7 @@ export function LeifSays({ message, mood = "normal", size = "md", className }: L
       {/* Leif */}
       <div className="flex-shrink-0">
         <img
-          src="/nutricao-inteligente/logo.png"
+          src={`${import.meta.env.BASE_URL}logo.png`}
           alt="Leif"
           className={cn(imgSize, "rounded-full object-cover ring-2 ring-gold/50 shadow-crisp")}
         />
@@ -76,7 +76,7 @@ export function LeifEmptyState({
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl bg-card/80 p-8 ring-1 ring-border shadow-crisp animate-fade-up">
       <img
-        src="/nutricao-inteligente/logo.png"
+        src={`${import.meta.env.BASE_URL}logo.png`}
         alt="Leif"
         className="h-20 w-20 rounded-full object-cover ring-2 ring-gold/50 shadow-soft"
       />

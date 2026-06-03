@@ -17,6 +17,22 @@
     <meta name="twitter:image" content="https://nosfieldk.github.io/nutricao-inteligente/logo.png" />
     <meta name="theme-color" content="#3C6E47" />
     <title>LeifNutri</title>
+    <!-- Restaura o path codificado pelo 404.html (spa-github-pages) -->
+    <script>
+      (function (l) {
+        if (l.search[1] === "/") {
+          var decoded = l.search
+            .slice(1)
+            .split("&")
+            .map(function (s) { return s.replace(/~and~/g, "&"); })
+            .join("?");
+          window.history.replaceState(
+            null, null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location));
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Lato:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
