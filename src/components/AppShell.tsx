@@ -25,12 +25,15 @@ const nav: NavItem[] = [
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      <img
-        src="/nutricao-inteligente/logo.png"
-        alt="LeifNutri"
-        className="h-10 w-10 rounded-full object-cover shadow-crisp ring-2 ring-accent/40"
-        loading="eager"
-      />
+      {/* overflow-hidden no container é o corte definitivo — sem borda branca */}
+      <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-accent/50 shadow-crisp">
+        <img
+          src="/nutricao-inteligente/logo.png"
+          alt="LeifNutri"
+          className="h-full w-full scale-[1.08] object-cover"
+          loading="eager"
+        />
+      </div>
       <div className="leading-none">
         <div className="font-display text-sm font-black tracking-wide">
           <span className="text-fg">Leif</span><span className="text-accent">Nutri</span>
