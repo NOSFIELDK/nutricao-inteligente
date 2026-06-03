@@ -112,10 +112,10 @@ function BottomItemLink({ to, label, Icon }: NavItem) {
 function VikingQuoteCard() {
   const quote = useVikingQuote();
   return (
-    <div className="rounded-2xl bg-accent/8 p-4 ring-1 ring-accent/20 shadow-crisp">
+    <div className="rounded-2xl bg-gold/8 p-4 ring-1 ring-gold/25 shadow-crisp">
       <div className="mb-2 flex items-center gap-1.5">
         <span className="text-base">⚔️</span>
-        <span className="font-display text-xs font-bold tracking-wide text-accent">Palavra do Guerreiro</span>
+        <span className="font-display text-xs font-bold tracking-wide text-gold">Palavra do Guerreiro</span>
       </div>
       <p className="text-xs leading-relaxed text-muted italic">"{quote}"</p>
     </div>

@@ -13,6 +13,7 @@ import type { CatalogItem, MealSlot, Recommendation } from "@/domain/models";
 import { recommendCatalog } from "@/domain/recommend/recommend";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
+import { LeifSays, LeifEmptyState } from "@/components/LeifSays";
 
 type Tab = "saude" | "doencas" | "performance";
 

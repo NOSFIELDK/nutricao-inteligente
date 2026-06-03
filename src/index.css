@@ -2,39 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── LeifNutri Theme ──────────────────────────────────────────────────────── */
-/* Paleta: verde musgo #3C6E47 · marrom madeira #5A3E2B · cinza metálico #A0A0A0
-          laranja pôr do sol #E67E22 · branco gelo #F5F5F5 */
+/* ── LeifNutri — Paleta completa extraída da logo ─────────────────────────── */
+/*
+  Verde musgo   #3C6E47  →  accent       (capa, natureza)
+  Marrom madeira#5A3E2B  →  fg           (escudo, madeira)
+  Ouro Celta    #C4912A  →  gold         (moldura, relíquias)
+  Azul Viking   #4A7EB5  →  viking-blue  (céu, água, montanha)
+  Laranja sol   #E67E22  →  accent-2     (pôr do sol, fogo)
+  Ferrugem      #9B4A1A  →  rust         (barba, cobre)
+  Osso/Pedra    #F0EBD8  →  bone         (texto "Leif", pergaminho)
+  Sombra floresta#1E3018 →  forest-dark  (profundidade)
+  Aço nórdico   #8A8A7A  →  steel        (machado, capacete)
+  Branco gelo   #F5F5F5  →  bg           (fundo neutro)
+*/
 
 :root {
-  /* Branco gelo com leve calor */
   --bg: 30 20% 97%;
-  /* Marrom madeira — texto principal */
   --fg: 25 35% 20%;
-  /* Cinza metálico — texto secundário */
   --muted: 25 10% 48%;
 
-  /* Cards quentes, estilo couro claro */
   --card: 30 25% 99%;
   --card-2: 30 18% 93%;
   --border: 28 22% 82%;
 
-  /* Verde musgo — destaque primário */
   --accent: 138 30% 33%;
-  /* Laranja pôr do sol — destaque energético */
   --accent-2: 28 79% 52%;
+
+  /* ── Cores extras da logo ── */
+  --gold: 38 65% 47%;          /* Ouro Celta #C4912A */
+  --viking-blue: 210 42% 50%;  /* Azul Viking #4A7EB5 */
+  --rust: 20 73% 35%;          /* Ferrugem #9B4A1A */
+  --bone: 43 50% 90%;          /* Osso/Pedra #F0EBD8 */
+  --forest-dark: 113 28% 15%;  /* Sombra floresta #1E3018 */
+  --steel: 60 4% 51%;          /* Aço nórdico #8A8A7A */
 
   --shadow: 25 40% 10%;
   --radius: 18px;
   --radius-sm: 12px;
 
-  /* Cinzel: fonte Viking para títulos; Lato: sans legível para corpo */
   --font-sans: "Lato", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   --font-display: "Cinzel", ui-serif, Georgia, serif;
 }
 
 .dark {
-  /* Madeira escura / noite nórdica */
   --bg: 25 40% 7%;
   --fg: 30 15% 94%;
   --muted: 30 10% 60%;
@@ -43,10 +53,16 @@
   --card-2: 25 30% 15%;
   --border: 25 25% 24%;
 
-  /* Verde musgo mais luminoso no escuro */
   --accent: 138 35% 43%;
-  /* Laranja mais vivo no escuro */
   --accent-2: 28 82% 58%;
+
+  /* Versões luminosas para dark mode */
+  --gold: 38 65% 57%;
+  --viking-blue: 210 48% 62%;
+  --rust: 20 68% 52%;
+  --bone: 43 40% 82%;
+  --forest-dark: 113 25% 8%;
+  --steel: 60 5% 60%;
 
   --shadow: 0 0% 0%;
 }

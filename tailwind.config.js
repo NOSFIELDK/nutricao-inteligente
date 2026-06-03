@@ -17,6 +17,13 @@ export default {
         border: "hsl(var(--border) / <alpha-value>)",
         accent: "hsl(var(--accent) / <alpha-value>)",
         "accent-2": "hsl(var(--accent-2) / <alpha-value>)",
+        // ── Cores extras da logo LeifNutri ──
+        gold: "hsl(var(--gold) / <alpha-value>)",
+        "viking-blue": "hsl(var(--viking-blue) / <alpha-value>)",
+        rust: "hsl(var(--rust) / <alpha-value>)",
+        bone: "hsl(var(--bone) / <alpha-value>)",
+        "forest-dark": "hsl(var(--forest-dark) / <alpha-value>)",
+        steel: "hsl(var(--steel) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

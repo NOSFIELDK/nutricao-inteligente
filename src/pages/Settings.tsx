@@ -275,6 +275,90 @@ export default function SettingsPage() {
     setCustomTargets(next);
   };
 
+  const apiConfigured = React.useMemo(() => SyncApi.hasRemoteApi(), []);
+
+  const refreshMe = React.useCallback(() => {
+    if (!apiConfigured) return;
+    if (!localStorage.getItem(STORAGE_KEYS.authToken)) return;
+    SyncApi.me()
+      .then((r) => setAccountEmail(r.email))
+      .catch(() => {
+        SyncApi.logout();
+        setAccountEmail(null);
+      });
+  }, [apiConfigured]);
+
+  const onRegister = async () => {
+    if (!apiConfigured) return;
+    setSyncBusy(true);
+    setSyncStatus(null);
+    try {
+      await SyncApi.register({ email: authEmail, password: authPassword });
+      refreshMe();
+      setSyncStatus("Conta criada e conectada.");
+    } catch (e) {
+      setSyncStatus(e instanceof Error ? e.message : "Falha ao registrar.");
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const onLogin = async () => {
+    if (!apiConfigured) return;
+    setSyncBusy(true);
+    setSyncStatus(null);
+    try {
+      await SyncApi.login({ email: authEmail, password: authPassword });
+      refreshMe();
+      setSyncStatus("Conectado.");
+    } catch (e) {
+      setSyncStatus(e instanceof Error ? e.message : "Falha ao entrar.");
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const onLogout = () => {
+    SyncApi.logout();
+    setAccountEmail(null);
+    setSyncStatus("Desconectado.");
+  };
+
+  const onSyncPush = async () => {
+    if (!apiConfigured) return;
+    setSyncBusy(true);
+    setSyncStatus(null);
+    try {
+      const backup = createBackup();
+      const res = await SyncApi.pushBackup(backup);
+      setSyncStatus(`Enviado. Atualizado em ${res.updatedAt}.`);
+    } catch (e) {
+      setSyncStatus(e instanceof Error ? e.message : "Falha ao enviar.");
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const onSyncPull = async () => {
+    if (!apiConfigured) return;
+    if (!window.confirm("Baixar do servidor e substituir seus dados locais?")) return;
+    setSyncBusy(true);
+    setSyncStatus(null);
+    try {
+      const res = await SyncApi.pullBackup();
+      if (!res.backup) {
+        setSyncStatus("Sem dados salvos no servidor.");
+        return;
+      }
+      restoreBackup(res.backup);
+      window.location.reload();
+    } catch (e) {
+      setSyncStatus(e instanceof Error ? e.message : "Falha ao baixar.");
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
   return (
     <div className="grid gap-6">
       <div>
@@ -315,6 +399,58 @@ export default function SettingsPage() {
                 Limpar
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Conta e sincronização</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {!apiConfigured ? (
+              <div className="text-sm text-muted">
+                Configure a Base URL da API para habilitar login e sync.
+              </div>
+            ) : accountEmail ? (
+              <div className="text-sm text-muted">
+                Conectado como <span className="font-medium text-fg">{accountEmail}</span>
+              </div>
+            ) : (
+              <div className="text-sm text-muted">Desconectado.</div>
+            )}
+
+            {!accountEmail && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField label="Email" inputMode="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
+                <TextField label="Senha" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {accountEmail ? (
+                <>
+                  <Button variant="secondary" onClick={onSyncPull} disabled={!apiConfigured || syncBusy}>
+                    Baixar
+                  </Button>
+                  <Button onClick={onSyncPush} disabled={!apiConfigured || syncBusy}>
+                    Enviar
+                  </Button>
+                  <Button variant="ghost" onClick={onLogout} disabled={syncBusy}>
+                    Sair
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={onLogin} disabled={!apiConfigured || syncBusy || !authEmail.trim() || authPassword.length < 8}>
+                    Entrar
+                  </Button>
+                  <Button variant="secondary" onClick={onRegister} disabled={!apiConfigured || syncBusy || !authEmail.trim() || authPassword.length < 8}>
+                    Criar conta
+                  </Button>
+                </>
+              )}
+            </div>
+            {syncStatus ? <div className="text-sm text-muted">{syncStatus}</div> : null}
           </CardContent>
         </Card>
 
