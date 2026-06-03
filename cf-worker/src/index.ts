@@ -1,5 +1,8 @@
+type AiTranslation = { translated_text: string };
+
 type Env = {
   NUTRI_KV: KVNamespace;
+  AI?: { run(model: string, params: { text: string; source_lang: string; target_lang: string }): Promise<AiTranslation> };
   USDA_API_KEY?: string;
   MEALDB_BASE?: string;
   FDC_BASE?: string;
@@ -300,7 +303,37 @@ async function computeRecipeMacros(env: Env, r: MealDbRecipe) {
   };
 }
 
-function normalizeRecipe(r: MealDbRecipe, macros: Macros): NormalizedRecipe {
+// ── Tradução EN → PT via Cloudflare Workers AI ──────────────────────────────
+
+async function translateToPt(env: Env, text: string): Promise<string> {
+  if (!env.AI || !text.trim()) return text;
+  try {
+    const result = await env.AI.run("@cf/meta/m2m100-1.2b", {
+      text,
+      source_lang: "en",
+      target_lang: "pt",
+    });
+    return result.translated_text?.trim() || text;
+  } catch {
+    return text; // fallback gracioso
+  }
+}
+
+async function translateStepsToPt(env: Env, steps: string[]): Promise<string[]> {
+  if (!env.AI || steps.length === 0) return steps;
+  // Traduz todos os passos em paralelo
+  const translated = await Promise.allSettled(steps.map((s) => translateToPt(env, s)));
+  return translated.map((r, i) => (r.status === "fulfilled" ? r.value : steps[i]));
+}
+
+// ── Normalização ─────────────────────────────────────────────────────────────
+
+function normalizeRecipe(
+  r: MealDbRecipe,
+  macros: Macros,
+  titlePt?: string,
+  stepsPt?: string[],
+): NormalizedRecipe {
   const id = `themealdb:${r.idMeal}`;
   const tags = (r.strTags ?? "")
     .split(",")
@@ -308,12 +341,12 @@ function normalizeRecipe(r: MealDbRecipe, macros: Macros): NormalizedRecipe {
     .filter(Boolean);
 
   const ingredients = extractIngredients(r).map((i) => (i.measure ? `${i.measure} ${i.ingredient}` : i.ingredient).trim());
-  const steps = splitSteps(r.strInstructions);
+  const steps = stepsPt ?? splitSteps(r.strInstructions);
 
   return {
     id,
     type: "recipe",
-    title: r.strMeal,
+    title: titlePt || r.strMeal,
     imageUrl: r.strMealThumb ?? "",
     category: defaultCategory(r),
     tags,
@@ -341,12 +374,22 @@ function internalError(message: string) {
 }
 
 async function getOrComputeNormalizedRecipe(env: Env, meal: MealDbRecipe) {
-  const cacheKey = `recipe:themealdb:${meal.idMeal}`;
+  // v2: inclui tradução PT — chave diferente para forçar re-cache
+  const cacheKey = `recipe:pt:themealdb:${meal.idMeal}`;
   const cached = await getCachedJson<NormalizedRecipe>(env, cacheKey);
   if (cached) return cached;
-  const macros = await computeRecipeMacros(env, meal);
-  const normalized = normalizeRecipe(meal, macros);
-  await putCachedJson(env, cacheKey, normalized, 60 * 60 * 24 * 30);
+
+  const rawSteps = splitSteps(meal.strInstructions);
+
+  // Macros + tradução em paralelo
+  const [macros, titlePt, stepsPt] = await Promise.all([
+    computeRecipeMacros(env, meal),
+    translateToPt(env, meal.strMeal),
+    translateStepsToPt(env, rawSteps),
+  ]);
+
+  const normalized = normalizeRecipe(meal, macros, titlePt, stepsPt);
+  putCachedJson(env, cacheKey, normalized, 60 * 60 * 24 * 30).catch(() => {});
   return normalized;
 }
 
@@ -433,17 +476,12 @@ async function handleGetById(req: Request, env: Env) {
   const [source, rawId] = id.includes(":") ? id.split(":", 2) : ["themealdb", id];
   if (source !== "themealdb") return badRequest("unsupported source");
 
-  const cacheKey = `recipe:themealdb:${rawId}`;
-  const cached = await getCachedJson<NormalizedRecipe>(env, cacheKey);
-  if (cached) return json(cached);
-
   const data = await fetchMealDb(env, `/lookup.php?i=${encodeURIComponent(rawId)}`);
   const meal = data.meals?.[0];
   if (!meal) return notFound();
 
-  const macros = await computeRecipeMacros(env, meal);
-  const normalized = normalizeRecipe(meal, macros);
-  await putCachedJson(env, cacheKey, normalized, 60 * 60 * 24 * 30);
+  // Reutiliza o mesmo fluxo com tradução PT
+  const normalized = await getOrComputeNormalizedRecipe(env, meal);
   return json(normalized);
 }
 
