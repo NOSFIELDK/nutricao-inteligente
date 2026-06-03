@@ -1,4 +1,4 @@
-import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Leaf, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
+import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Settings, ShieldCheck, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
 import * as React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -25,12 +25,13 @@ const nav: NavItem[] = [
 function Brand() {
   return (
     <div className="flex items-center gap-2">
-      <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent/25 ring-1 ring-accent/25 shadow-crisp">
-        <Leaf className="h-5 w-5 text-fg" />
+      <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent/20 ring-1 ring-accent/30 shadow-crisp">
+        <ShieldCheck className="h-5 w-5 text-accent" />
       </div>
-      <div className="leading-tight">
-        <div className="font-display text-sm tracking-tight text-fg">Nutrição</div>
-        <div className="text-[11px] text-muted">inteligente</div>
+      <div className="leading-none">
+        <div className="font-display text-sm font-black tracking-wide">
+          <span className="text-fg">Leif</span><span className="text-accent">Nutri</span>
+        </div>
       </div>
     </div>
   );
@@ -101,10 +102,10 @@ export function AppShell() {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl bg-card/60 p-4 text-xs text-muted ring-1 ring-border shadow-crisp">
-            <div className="font-medium text-fg">Dica rápida</div>
+          <div className="rounded-2xl bg-accent/8 p-4 text-xs text-muted ring-1 ring-accent/20 shadow-crisp">
+            <div className="font-display text-xs font-bold tracking-wide text-accent">Dica do Guerreiro</div>
             <div className="mt-1 leading-relaxed">
-              Use o Plano Semanal para gerar uma lista de compras automaticamente e manter consistência nos macros.
+              Use o Plano Semanal para gerar sua lista de compras automaticamente e manter consistência nos macros.
             </div>
           </div>
         </aside>
