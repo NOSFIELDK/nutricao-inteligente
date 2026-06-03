@@ -125,6 +125,18 @@ export type DailyTotals = {
   waterMl: number;
 };
 
+export type ManualEntry = {
+  id: string;
+  dateISO: string;
+  title: string;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
+};
+
+export type FontScale = "100" | "112" | "125";
+
 export type RecommendationReason = {
   tag: CatalogTag;
   label: string;

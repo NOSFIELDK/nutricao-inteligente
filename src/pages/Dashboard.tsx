@@ -46,6 +46,8 @@ export default function DashboardPage() {
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
   const waterByDate = useAppStore((s) => s.waterByDate);
+  const manualByDate = useAppStore((s) => s.manualByDate);
+  const customTargets = useAppStore((s) => s.customTargets);
   const addWater = useAppStore((s) => s.addWater);
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const isFavorite = useAppStore((s) => s.isFavorite);
@@ -68,9 +70,24 @@ export default function DashboardPage() {
     return plan.filter((p) => p.dateISO === today).filter((p) => consumedPlan[p.id]);
   }, [consumedPlan, plan, today]);
   const todayMacros = React.useMemo(() => {
-    return calcDayMacros({ catalog: mergedCatalog, plan: consumedTodayPlan, dateISO: today });
-  }, [consumedTodayPlan, mergedCatalog, today]);
-  const targets = React.useMemo(() => buildTargets(profile), [profile]);
+    const m = calcDayMacros({ catalog: mergedCatalog, plan: consumedTodayPlan, dateISO: today });
+    const manual = (manualByDate[today] ?? []).reduce(
+      (acc, e) => ({
+        proteinG: acc.proteinG + e.proteinG,
+        carbsG: acc.carbsG + e.carbsG,
+        fatG: acc.fatG + e.fatG,
+        fiberG: acc.fiberG + e.fiberG,
+      }),
+      { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
+    );
+    return {
+      proteinG: Math.round((m.proteinG + manual.proteinG) * 10) / 10,
+      carbsG: Math.round((m.carbsG + manual.carbsG) * 10) / 10,
+      fatG: Math.round((m.fatG + manual.fatG) * 10) / 10,
+      fiberG: Math.round((m.fiberG + manual.fiberG) * 10) / 10,
+    };
+  }, [consumedTodayPlan, manualByDate, mergedCatalog, today]);
+  const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
   const waterMl = waterByDate[today] ?? 0;
 
   const openAdd = (item: CatalogItem) => {

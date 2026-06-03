@@ -2,9 +2,11 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
-import { calcDayMacros } from "@/domain/nutrition/insights";
+import { Badge } from "@/components/ui/Chip";
+import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
 import type { CatalogItem, MealSlot, PlanItem } from "@/domain/models";
 import { useAppStore } from "@/store/useAppStore";
@@ -24,6 +26,12 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
+function levelTone(level: "baixo" | "medio" | "alto") {
+  if (level === "alto") return "accent2" as const;
+  if (level === "medio") return "accent" as const;
+  return "muted" as const;
+}
+
 function dayList() {
   const end = todayISO();
   return Array.from({ length: 14 }).map((_, idx) => addDaysISO(end, -idx));
@@ -35,29 +43,64 @@ export default function HistoryPage() {
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
   const waterByDate = useAppStore((s) => s.waterByDate);
+  const manualByDate = useAppStore((s) => s.manualByDate);
+  const customTargets = useAppStore((s) => s.customTargets);
   const addWater = useAppStore((s) => s.addWater);
   const setWater = useAppStore((s) => s.setWater);
   const toggleConsumed = useAppStore((s) => s.toggleConsumed);
+  const addManualEntry = useAppStore((s) => s.addManualEntry);
+  const removeManualEntry = useAppStore((s) => s.removeManualEntry);
 
   const mergedCatalog: CatalogItem[] = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
-  const targets = React.useMemo(() => buildTargets(profile), [profile]);
+  const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
   const days = React.useMemo(() => dayList(), []);
 
   const [selectedDate, setSelectedDate] = React.useState(todayISO());
+  const [manualTitle, setManualTitle] = React.useState("");
+  const [manualProtein, setManualProtein] = React.useState("");
+  const [manualCarbs, setManualCarbs] = React.useState("");
+  const [manualFat, setManualFat] = React.useState("");
+  const [manualFiber, setManualFiber] = React.useState("");
 
   const selectedPlan = React.useMemo(() => {
     return plan.filter((p) => p.dateISO === selectedDate).slice().sort((a, b) => slots.indexOf(a.mealSlot) - slots.indexOf(b.mealSlot));
   }, [plan, selectedDate]);
+
+  const manualEntries = manualByDate[selectedDate] ?? [];
 
   const consumedSelectedPlan = React.useMemo(() => {
     return selectedPlan.filter((p) => consumedPlan[p.id]);
   }, [consumedPlan, selectedPlan]);
 
   const macros = React.useMemo(() => {
-    return calcDayMacros({ catalog: mergedCatalog, plan: consumedSelectedPlan, dateISO: selectedDate });
-  }, [consumedSelectedPlan, mergedCatalog, selectedDate]);
+    const m = calcDayMacros({ catalog: mergedCatalog, plan: consumedSelectedPlan, dateISO: selectedDate });
+    const manual = manualEntries.reduce(
+      (acc, e) => ({
+        proteinG: acc.proteinG + e.proteinG,
+        carbsG: acc.carbsG + e.carbsG,
+        fatG: acc.fatG + e.fatG,
+        fiberG: acc.fiberG + e.fiberG,
+      }),
+      { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
+    );
+    return {
+      proteinG: Math.round((m.proteinG + manual.proteinG) * 10) / 10,
+      carbsG: Math.round((m.carbsG + manual.carbsG) * 10) / 10,
+      fatG: Math.round((m.fatG + manual.fatG) * 10) / 10,
+      fiberG: Math.round((m.fiberG + manual.fiberG) * 10) / 10,
+    };
+  }, [consumedSelectedPlan, manualEntries, mergedCatalog, selectedDate]);
 
   const waterMl = waterByDate[selectedDate] ?? 0;
+  const insights = React.useMemo(() => {
+    return buildInsights({
+      profile,
+      catalog: mergedCatalog,
+      plan: consumedSelectedPlan,
+      dateISO: selectedDate,
+      targetsOverride: customTargets,
+    });
+  }, [profile, mergedCatalog, consumedSelectedPlan, selectedDate, customTargets]);
 
   return (
     <div className="grid gap-6">
@@ -84,6 +127,7 @@ export default function HistoryPage() {
               const dayPlan = plan.filter((p) => p.dateISO === d);
               const consumed = dayPlan.filter((p) => consumedPlan[p.id]).length;
               const water = waterByDate[d] ?? 0;
+              const manualCount = (manualByDate[d] ?? []).length;
               const isActive = d === selectedDate;
               return (
                 <button
@@ -97,7 +141,7 @@ export default function HistoryPage() {
                   <div className="min-w-0">
                     <div className="font-medium text-fg">{d}</div>
                     <div className="mt-0.5 text-[11px] text-muted">
-                      {consumed}/{dayPlan.length} consumido · {Math.round(water / 250) * 250}ml água
+                      {consumed}/{dayPlan.length} consumido · {Math.round(water / 250) * 250}ml água · {manualCount} registro(s)
                     </div>
                   </div>
                   <div className="text-[11px] text-muted">ver</div>
@@ -152,6 +196,77 @@ export default function HistoryPage() {
                 <ProgressBar value={targets.waterMl > 0 ? waterMl / targets.waterMl : 0} />
               </div>
             </div>
+
+            {profile && insights.length > 0 && (
+              <div className="mt-5 grid gap-2">
+                {insights.slice(0, 3).map((i) => (
+                  <div key={i.id} className="flex items-start justify-between gap-4 rounded-xl bg-card-2/45 p-4 ring-1 ring-border">
+                    <div className="min-w-0">
+                      <div className="font-medium text-fg">{i.title}</div>
+                      <div className="mt-1 text-sm text-muted">{i.action}</div>
+                    </div>
+                    <Badge tone={levelTone(i.level)}>{i.level.toUpperCase()}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-display text-lg tracking-tight text-fg">Registro rápido</div>
+              <div className="text-xs text-muted">macros opcionais</div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <TextField label="Item" placeholder="Ex.: iogurte, fruta, sanduíche" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
+              <div className="grid gap-3 sm:grid-cols-4">
+                <TextField label="Proteína (g)" inputMode="decimal" value={manualProtein} onChange={(e) => setManualProtein(e.target.value)} />
+                <TextField label="Carbo (g)" inputMode="decimal" value={manualCarbs} onChange={(e) => setManualCarbs(e.target.value)} />
+                <TextField label="Gordura (g)" inputMode="decimal" value={manualFat} onChange={(e) => setManualFat(e.target.value)} />
+                <TextField label="Fibras (g)" inputMode="decimal" value={manualFiber} onChange={(e) => setManualFiber(e.target.value)} />
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  onClick={() => {
+                    if (!manualTitle.trim()) return;
+                    addManualEntry({
+                      dateISO: selectedDate,
+                      title: manualTitle.trim(),
+                      proteinG: Number(manualProtein) || 0,
+                      carbsG: Number(manualCarbs) || 0,
+                      fatG: Number(manualFat) || 0,
+                      fiberG: Number(manualFiber) || 0,
+                    });
+                    setManualTitle("");
+                    setManualProtein("");
+                    setManualCarbs("");
+                    setManualFat("");
+                    setManualFiber("");
+                  }}
+                  disabled={!manualTitle.trim()}
+                >
+                  Adicionar
+                </Button>
+              </div>
+            </div>
+
+            {manualEntries.length > 0 && (
+              <div className="mt-4 grid gap-2">
+                {manualEntries.map((e) => (
+                  <div key={e.id} className="flex items-start justify-between gap-3 rounded-xl bg-card-2/45 p-3 ring-1 ring-border">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-fg">{e.title}</div>
+                      <div className="mt-0.5 text-xs text-muted">
+                        P {e.proteinG}g · C {e.carbsG}g · G {e.fatG}g · F {e.fiberG}g
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => removeManualEntry(selectedDate, e.id)}>
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">

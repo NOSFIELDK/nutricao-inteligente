@@ -7,6 +7,8 @@ import { SelectField, TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
 import type { CatalogItem, MealSlot, PlanItem, Recommendation } from "@/domain/models";
+import { calcDayMacros } from "@/domain/nutrition/insights";
+import { buildTargets } from "@/domain/nutrition/targets";
 import { recommendCatalog } from "@/domain/recommend/recommend";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
@@ -29,6 +31,7 @@ export default function PlanPage() {
   const favorites = useAppStore((s) => s.favorites);
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
+  const customTargets = useAppStore((s) => s.customTargets);
   const addToPlan = useAppStore((s) => s.addToPlan);
   const removeFromPlan = useAppStore((s) => s.removeFromPlan);
   const setPlanItemServings = useAppStore((s) => s.setPlanItemServings);
@@ -52,6 +55,28 @@ export default function PlanPage() {
   }, [favId, favoriteItems]);
 
   const weekDays = React.useMemo(() => Array.from({ length: 7 }).map((_, i) => addDaysISO(start, i)), [start]);
+  const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
+
+  const macrosByDate = React.useMemo(() => {
+    const map = new Map<string, ReturnType<typeof calcDayMacros>>();
+    for (const d of weekDays) {
+      map.set(d, calcDayMacros({ catalog: mergedCatalog, plan, dateISO: d }));
+    }
+    return map;
+  }, [mergedCatalog, plan, weekDays]);
+
+  const alertsByDate = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+    if (!profile) return map;
+    for (const d of weekDays) {
+      const m = macrosByDate.get(d) ?? { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
+      const alerts: string[] = [];
+      if (targets.proteinG > 0 && m.proteinG < targets.proteinG * 0.75) alerts.push("Proteína baixa");
+      if (targets.fiberG > 0 && m.fiberG < targets.fiberG * 0.75) alerts.push("Fibras baixas");
+      map.set(d, alerts);
+    }
+    return map;
+  }, [macrosByDate, profile, targets.fiberG, targets.proteinG, weekDays]);
 
   const byDate = React.useMemo(() => {
     const map = new Map<string, PlanItem[]>();
@@ -154,6 +179,7 @@ export default function PlanPage() {
         {weekDays.map((d, idx) => {
           const items = byDate.get(d) ?? [];
           const counts = consumedCountByDate.get(d) ?? { consumed: 0, total: items.length };
+          const alerts = alertsByDate.get(d) ?? [];
           const isToday = d === start;
           return (
             <div
@@ -170,6 +196,11 @@ export default function PlanPage() {
                   {isToday && (
                     <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[11px] font-medium text-fg ring-1 ring-accent/30">
                       hoje
+                    </span>
+                  )}
+                  {profile && alerts.length > 0 && (
+                    <span className="rounded-full bg-accent-2/18 px-2 py-0.5 text-[11px] font-medium text-fg ring-1 ring-accent-2/25">
+                      {alerts.join(" · ")}
                     </span>
                   )}
                 </div>

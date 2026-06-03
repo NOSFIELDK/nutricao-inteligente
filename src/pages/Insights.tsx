@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Chip";
 import { catalog } from "@/data/catalog";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
+import { buildTargets } from "@/domain/nutrition/targets";
 import { useAppStore } from "@/store/useAppStore";
 import { todayISO } from "@/utils/date";
 
@@ -17,14 +18,36 @@ export default function InsightsPage() {
   const profile = useAppStore((s) => s.profile);
   const plan = useAppStore((s) => s.plan);
   const recipeCache = useAppStore((s) => s.recipeCache);
+  const consumedPlan = useAppStore((s) => s.consumedPlan);
+  const manualByDate = useAppStore((s) => s.manualByDate);
+  const customTargets = useAppStore((s) => s.customTargets);
 
   const dateISO = todayISO();
   const mergedCatalog = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
+  const consumedTodayPlan = React.useMemo(() => plan.filter((p) => p.dateISO === dateISO).filter((p) => consumedPlan[p.id]), [consumedPlan, dateISO, plan]);
+  const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
   const insights = React.useMemo(
-    () => buildInsights({ profile, catalog: mergedCatalog, plan, dateISO }),
-    [profile, mergedCatalog, plan, dateISO],
+    () => buildInsights({ profile, catalog: mergedCatalog, plan: consumedTodayPlan, dateISO, targetsOverride: customTargets }),
+    [profile, mergedCatalog, consumedTodayPlan, dateISO, customTargets],
   );
-  const macros = React.useMemo(() => calcDayMacros({ catalog: mergedCatalog, plan, dateISO }), [mergedCatalog, plan, dateISO]);
+  const macros = React.useMemo(() => {
+    const m = calcDayMacros({ catalog: mergedCatalog, plan: consumedTodayPlan, dateISO });
+    const manual = (manualByDate[dateISO] ?? []).reduce(
+      (acc, e) => ({
+        proteinG: acc.proteinG + e.proteinG,
+        carbsG: acc.carbsG + e.carbsG,
+        fatG: acc.fatG + e.fatG,
+        fiberG: acc.fiberG + e.fiberG,
+      }),
+      { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
+    );
+    return {
+      proteinG: Math.round((m.proteinG + manual.proteinG) * 10) / 10,
+      carbsG: Math.round((m.carbsG + manual.carbsG) * 10) / 10,
+      fatG: Math.round((m.fatG + manual.fatG) * 10) / 10,
+      fiberG: Math.round((m.fiberG + manual.fiberG) * 10) / 10,
+    };
+  }, [consumedTodayPlan, mergedCatalog, dateISO, manualByDate]);
 
   return (
     <div className="grid gap-6">
@@ -43,10 +66,10 @@ export default function InsightsPage() {
       <div className="grid gap-3 sm:grid-cols-4">
         {(
           [
-            { label: "Proteína", value: macros.proteinG, unit: "g", target: 50, color: "bg-accent" },
+            { label: "Proteína", value: macros.proteinG, unit: "g", target: targets.proteinG || 50, color: "bg-accent" },
             { label: "Carbo",    value: macros.carbsG,   unit: "g", target: 250, color: "bg-accent-2" },
             { label: "Gordura",  value: macros.fatG,     unit: "g", target: 70,  color: "bg-accent/70" },
-            { label: "Fibras",   value: macros.fiberG,   unit: "g", target: 25,  color: "bg-accent-2/70" },
+            { label: "Fibras",   value: macros.fiberG,   unit: "g", target: targets.fiberG || 25,  color: "bg-accent-2/70" },
           ] as const
         ).map(({ label, value, unit, target, color }, idx) => {
           const pct = Math.min(100, Math.round((value / target) * 100));

@@ -1,4 +1,4 @@
-import type { CatalogItem, PlanItem, Recipe, UserProfile } from "@/domain/models";
+import type { CatalogItem, NutritionTargets, PlanItem, Recipe, UserProfile } from "@/domain/models";
 
 export type Insight = {
   id: string;
@@ -42,6 +42,7 @@ export function buildInsights(params: {
   catalog: CatalogItem[];
   plan: PlanItem[];
   dateISO: string;
+  targetsOverride?: NutritionTargets | null;
 }): Insight[] {
   if (!params.profile) {
     return [
@@ -55,14 +56,16 @@ export function buildInsights(params: {
     ];
   }
 
-  const { proteinG, fiberG } = calcDayMacros({ catalog: params.catalog, plan: params.plan, dateISO: params.dateISO });
+  const { proteinG, fiberG, carbsG } = calcDayMacros({ catalog: params.catalog, plan: params.plan, dateISO: params.dateISO });
 
-  const proteinTarget =
+  const baseProteinTarget =
     params.profile.primaryGoal === "performance"
       ? params.profile.weightKg * 1.6
       : params.profile.primaryGoal === "tratamento"
         ? params.profile.weightKg * 1.2
         : params.profile.weightKg * 1.0;
+  const proteinTarget = params.targetsOverride?.proteinG ?? baseProteinTarget;
+  const fiberTarget = params.targetsOverride?.fiberG ?? 25;
 
   const insights: Insight[] = [];
 
@@ -84,34 +87,76 @@ export function buildInsights(params: {
     });
   }
 
-  if (fiberG < 18) {
+  if (fiberG < Math.min(18, fiberTarget * 0.75)) {
     insights.push({
       id: "fiber_low",
       level: "medio",
       title: "Fibras podem melhorar",
-      detail: `Estimativa no plano: ${fiberG}g (alvo comum: 25g).`,
+      detail: `Estimativa no plano: ${fiberG}g (meta: ${round(fiberTarget)}g).`,
       action: "Aumente legumes/folhas e escolha opções integrais.",
     });
   }
 
   if (params.profile.conditions.includes("hipertensao")) {
+    const day = params.plan.filter((p) => p.dateISO === params.dateISO);
+    const recipes = day
+      .filter((p) => p.itemType === "recipe")
+      .map((p) => recipeById(params.catalog, p.itemId))
+      .filter((r): r is Recipe => !!r);
+    const lowSodiumCount = recipes.filter((r) => r.tags.includes("lowSodium")).length;
     insights.push({
       id: "bp_hint",
-      level: "baixo",
+      level: lowSodiumCount === 0 ? "medio" : "baixo",
       title: "Hipertensão: atenção ao sódio",
-      detail: "Prefira temperos naturais e minimize ultraprocessados.",
-      action: "Busque tags de baixo sódio e mantenha boa hidratação.",
+      detail: lowSodiumCount === 0 ? "Seu plano não tem destaque de baixo sódio hoje." : "Inclua mais opções com baixo sódio e hidratação adequada.",
+      action: "Priorize preparos caseiros, temperos naturais e itens com tag de baixo sódio quando disponível.",
     });
   }
 
   if (params.profile.conditions.includes("diabetes")) {
+    const highCarb = carbsG >= 180;
+    const lowFiber = fiberG < fiberTarget;
     insights.push({
       id: "dm_hint",
-      level: "baixo",
+      level: highCarb && lowFiber ? "medio" : "baixo",
       title: "Diabetes: priorize baixo IG",
-      detail: "Fibras e combinações com proteína ajudam a reduzir picos.",
-      action: "Use tags de baixo índice glicêmico e monte pratos com volume de vegetais.",
+      detail: highCarb && lowFiber ? "Carbo alto + fibra abaixo da meta pode aumentar picos." : "Fibras e combinações com proteína ajudam a reduzir picos.",
+      action: "Prefira carbo de baixo IG, aumente fibras e combine carbo com proteína e vegetais.",
     });
+  }
+
+  if (params.profile.restrictions.includes("lactose") || params.profile.restrictions.includes("gluten")) {
+    const day = params.plan.filter((p) => p.dateISO === params.dateISO);
+    const recipes = day
+      .filter((p) => p.itemType === "recipe")
+      .map((p) => recipeById(params.catalog, p.itemId))
+      .filter((r): r is Recipe => !!r);
+
+    if (params.profile.restrictions.includes("lactose")) {
+      const hasRisk = recipes.some((r) => !r.tags.includes("lactoseFree"));
+      if (hasRisk) {
+        insights.push({
+          id: "lactose_attention",
+          level: "medio",
+          title: "Atenção à lactose",
+          detail: "Algumas receitas do dia não estão marcadas como sem lactose.",
+          action: "Revise ingredientes e prefira opções com tag sem lactose quando possível.",
+        });
+      }
+    }
+
+    if (params.profile.restrictions.includes("gluten")) {
+      const hasRisk = recipes.some((r) => !r.tags.includes("glutenFree"));
+      if (hasRisk) {
+        insights.push({
+          id: "gluten_attention",
+          level: "medio",
+          title: "Atenção ao glúten",
+          detail: "Algumas receitas do dia não estão marcadas como sem glúten.",
+          action: "Revise ingredientes e prefira opções com tag sem glúten quando possível.",
+        });
+      }
+    }
   }
 
   if (insights.length === 0) {
@@ -126,4 +171,3 @@ export function buildInsights(params: {
 
   return insights;
 }
-

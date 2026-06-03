@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route } from "react-router-dom";
 
 import { AppShell } from "@/components/AppShell";
 import { ReminderBanner } from "@/components/ReminderBanner";
+import { useAppStore } from "@/store/useAppStore";
 
 const RootRedirect = React.lazy(() => import("@/pages/RootRedirect"));
 const ProfilePage = React.lazy(() => import("@/pages/Profile"));
@@ -16,6 +17,7 @@ const PlanPage = React.lazy(() => import("@/pages/Plan"));
 const ShoppingPage = React.lazy(() => import("@/pages/Shopping"));
 const InsightsPage = React.lazy(() => import("@/pages/Insights"));
 const SettingsPage = React.lazy(() => import("@/pages/Settings"));
+const AboutPage = React.lazy(() => import("@/pages/About"));
 
 function RouteFallback() {
   return (
@@ -27,9 +29,27 @@ function RouteFallback() {
   );
 }
 
+function AccessibilitySync() {
+  const highContrast = useAppStore((s) => s.highContrast);
+  const fontScale = useAppStore((s) => s.fontScale);
+
+  React.useEffect(() => {
+    document.documentElement.classList.toggle("hc", highContrast);
+  }, [highContrast]);
+
+  React.useEffect(() => {
+    document.documentElement.classList.remove("fs-112", "fs-125");
+    if (fontScale === "112") document.documentElement.classList.add("fs-112");
+    if (fontScale === "125") document.documentElement.classList.add("fs-125");
+  }, [fontScale]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <>
+      <AccessibilitySync />
       <Router>
         <React.Suspense fallback={<RouteFallback />}>
           <Routes>
@@ -38,6 +58,7 @@ export default function App() {
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/painel" element={<DashboardPage />} />
               <Route path="/historico" element={<HistoryPage />} />
+              <Route path="/sobre" element={<AboutPage />} />
               <Route path="/receitas" element={<RecipesPage />} />
               <Route path="/receitas/:id" element={<RecipeDetailPage />} />
               <Route path="/alimentos" element={<FoodsPage />} />
