@@ -7,6 +7,7 @@ import { ReminderBanner } from "@/components/ReminderBanner";
 const RootRedirect = React.lazy(() => import("@/pages/RootRedirect"));
 const ProfilePage = React.lazy(() => import("@/pages/Profile"));
 const DashboardPage = React.lazy(() => import("@/pages/Dashboard"));
+const HistoryPage = React.lazy(() => import("@/pages/History"));
 const RecipesPage = React.lazy(() => import("@/pages/Recipes"));
 const RecipeDetailPage = React.lazy(() => import("@/pages/RecipeDetail"));
 const FoodsPage = React.lazy(() => import("@/pages/Foods"));
@@ -36,6 +37,7 @@ export default function App() {
             <Route element={<AppShell />}>
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/painel" element={<DashboardPage />} />
+              <Route path="/historico" element={<HistoryPage />} />
               <Route path="/receitas" element={<RecipesPage />} />
               <Route path="/receitas/:id" element={<RecipeDetailPage />} />
               <Route path="/alimentos" element={<FoodsPage />} />

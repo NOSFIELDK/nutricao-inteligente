@@ -1,4 +1,4 @@
-import { Apple, CalendarDays, Dumbbell, LayoutDashboard, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
+import { Apple, BarChart3, CalendarDays, Dumbbell, LayoutDashboard, Leaf, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
 import * as React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -13,6 +13,7 @@ type NavItem = {
 
 const nav: NavItem[] = [
   { to: "/painel", label: "Painel", Icon: LayoutDashboard },
+  { to: "/historico", label: "Histórico", Icon: BarChart3 },
   { to: "/receitas", label: "Receitas", Icon: UtensilsCrossed },
   { to: "/alimentos", label: "Alimentos", Icon: Apple },
   { to: "/suplementos", label: "Suplementos", Icon: Dumbbell },
@@ -25,12 +26,13 @@ const nav: NavItem[] = [
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      {/* overflow-hidden no container é o corte definitivo — sem borda branca */}
-      <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-accent/50 shadow-crisp">
+      {/* mix-blend-mode:multiply dissolve o branco no fundo claro
+          dark:mix-blend-mode:normal mantém visível no modo escuro */}
+      <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full shadow-crisp ring-2 ring-accent/50">
         <img
           src="/nutricao-inteligente/logo.png"
           alt="LeifNutri"
-          className="h-full w-full scale-[1.08] object-cover"
+          className="h-full w-full scale-[1.12] object-cover [mix-blend-mode:multiply] dark:[mix-blend-mode:normal]"
           loading="eager"
         />
       </div>

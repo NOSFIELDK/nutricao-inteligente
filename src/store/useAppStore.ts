@@ -18,6 +18,8 @@ type AppState = {
   shoppingChecked: Record<string, boolean>;
   reminders: AppReminder[];
   recipeCache: Record<string, Recipe>;
+  consumedPlan: Record<string, boolean>;
+  waterByDate: Record<string, number>;
 
   setProfile: (profile: UserProfile) => void;
   clearProfile: () => void;
@@ -35,6 +37,10 @@ type AppState = {
 
   cacheRecipes: (recipes: Recipe[]) => void;
 
+  toggleConsumed: (planItemId: string) => void;
+  setWater: (dateISO: string, waterMl: number) => void;
+  addWater: (dateISO: string, deltaMl: number) => void;
+
   setReminderEnabled: (id: string, enabled: boolean) => void;
   setReminderInterval: (id: string, interval: ReminderInterval) => void;
   addReminder: (label: string, message: string, intervalMinutes: ReminderInterval) => void;
@@ -50,9 +56,12 @@ export const useAppStore = create<AppState>()(
       shoppingChecked: {},
       reminders: DEFAULT_REMINDERS,
       recipeCache: {},
+      consumedPlan: {},
+      waterByDate: {},
 
       setProfile: (profile) => set({ profile }),
-      clearProfile: () => set({ profile: null, favorites: [], plan: [], shoppingChecked: {}, recipeCache: {} }),
+      clearProfile: () =>
+        set({ profile: null, favorites: [], plan: [], shoppingChecked: {}, recipeCache: {}, consumedPlan: {}, waterByDate: {} }),
 
       toggleFavorite: (item) => {
         const { favorites } = get();
@@ -85,14 +94,18 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      removeFromPlan: (id) => set({ plan: get().plan.filter((p) => p.id !== id) }),
+      removeFromPlan: (id) =>
+        set({
+          plan: get().plan.filter((p) => p.id !== id),
+          consumedPlan: Object.fromEntries(Object.entries(get().consumedPlan).filter(([k]) => k !== id)),
+        }),
 
       setPlanItemServings: (id, servings) =>
         set({
           plan: get().plan.map((p) => (p.id === id ? { ...p, servings: Math.max(1, Math.round(servings)) } : p)),
         }),
 
-      clearPlan: () => set({ plan: [], shoppingChecked: {} }),
+      clearPlan: () => set({ plan: [], shoppingChecked: {}, consumedPlan: {} }),
 
       setShoppingChecked: (key, checked) =>
         set({ shoppingChecked: { ...get().shoppingChecked, [key]: checked } }),
@@ -104,6 +117,18 @@ export const useAppStore = create<AppState>()(
         const next = { ...get().recipeCache };
         for (const r of recipes) next[r.id] = r;
         set({ recipeCache: next });
+      },
+
+      toggleConsumed: (planItemId) =>
+        set({
+          consumedPlan: { ...get().consumedPlan, [planItemId]: !get().consumedPlan[planItemId] },
+        }),
+
+      setWater: (dateISO, waterMl) => set({ waterByDate: { ...get().waterByDate, [dateISO]: Math.max(0, Math.round(waterMl)) } }),
+
+      addWater: (dateISO, deltaMl) => {
+        const current = get().waterByDate[dateISO] ?? 0;
+        set({ waterByDate: { ...get().waterByDate, [dateISO]: Math.max(0, Math.round(current + deltaMl)) } });
       },
 
       setReminderEnabled: (id, enabled) =>
@@ -120,7 +145,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEYS.state,
-      version: 3,
+      version: 4,
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState>;
         return {
@@ -130,6 +155,8 @@ export const useAppStore = create<AppState>()(
           shoppingChecked: state.shoppingChecked ?? {},
           reminders: version < 2 ? DEFAULT_REMINDERS : state.reminders ?? DEFAULT_REMINDERS,
           recipeCache: version < 3 ? {} : state.recipeCache ?? {},
+          consumedPlan: version < 4 ? {} : state.consumedPlan ?? {},
+          waterByDate: version < 4 ? {} : state.waterByDate ?? {},
         };
       },
       partialize: (state) => ({
@@ -139,6 +166,8 @@ export const useAppStore = create<AppState>()(
         shoppingChecked: state.shoppingChecked,
         reminders: state.reminders,
         recipeCache: state.recipeCache,
+        consumedPlan: state.consumedPlan,
+        waterByDate: state.waterByDate,
       }),
     },
   ),

@@ -111,6 +111,20 @@ export type Favorite = {
   itemId: string;
 };
 
+export type NutritionTargets = {
+  proteinG: number;
+  fiberG: number;
+  waterMl: number;
+};
+
+export type DailyTotals = {
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
+  waterMl: number;
+};
+
 export type RecommendationReason = {
   tag: CatalogTag;
   label: string;

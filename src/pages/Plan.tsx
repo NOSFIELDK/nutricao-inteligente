@@ -28,10 +28,12 @@ export default function PlanPage() {
   const plan = useAppStore((s) => s.plan);
   const favorites = useAppStore((s) => s.favorites);
   const recipeCache = useAppStore((s) => s.recipeCache);
+  const consumedPlan = useAppStore((s) => s.consumedPlan);
   const addToPlan = useAppStore((s) => s.addToPlan);
   const removeFromPlan = useAppStore((s) => s.removeFromPlan);
   const setPlanItemServings = useAppStore((s) => s.setPlanItemServings);
   const clearPlan = useAppStore((s) => s.clearPlan);
+  const toggleConsumed = useAppStore((s) => s.toggleConsumed);
 
   const { start, end } = weekRange();
   const mergedCatalog = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
@@ -61,6 +63,18 @@ export default function PlanPage() {
     for (const [k, v] of map) v.sort((a, b) => slotOrder(a.mealSlot) - slotOrder(b.mealSlot));
     return map;
   }, [plan, weekDays]);
+
+  const consumedCountByDate = React.useMemo(() => {
+    const m = new Map<string, { consumed: number; total: number }>();
+    for (const d of weekDays) m.set(d, { consumed: 0, total: 0 });
+    for (const p of plan) {
+      if (!m.has(p.dateISO)) continue;
+      const row = m.get(p.dateISO)!;
+      row.total += 1;
+      if (consumedPlan[p.id]) row.consumed += 1;
+    }
+    return m;
+  }, [consumedPlan, plan, weekDays]);
 
   const generateWeek = () => {
     if (!profile) return;
@@ -139,6 +153,7 @@ export default function PlanPage() {
       <div className="grid gap-4">
         {weekDays.map((d, idx) => {
           const items = byDate.get(d) ?? [];
+          const counts = consumedCountByDate.get(d) ?? { consumed: 0, total: items.length };
           const isToday = d === start;
           return (
             <div
@@ -158,7 +173,9 @@ export default function PlanPage() {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-muted">{items.length} item(ns)</div>
+                <div className="text-xs text-muted">
+                  {counts.consumed}/{counts.total} consumido(s)
+                </div>
               </div>
               <div className="grid gap-3 p-4">
                 {slots.map((slot) => {
@@ -175,6 +192,7 @@ export default function PlanPage() {
                         <div className="grid gap-2">
                           {slotItems.map((p) => {
                             const item = getItem(mergedCatalog, { type: p.itemType, id: p.itemId });
+                            const isConsumed = !!consumedPlan[p.id];
                             return (
                               <div key={p.id} className="flex flex-col gap-2 rounded-xl bg-card/70 p-3 ring-1 ring-border">
                                 <div className="flex items-start justify-between gap-3">
@@ -189,6 +207,15 @@ export default function PlanPage() {
                                     Remover
                                   </button>
                                 </div>
+                                <label className="flex items-center justify-between gap-3 rounded-xl bg-card-2/45 px-3 py-2 ring-1 ring-border">
+                                  <span className="text-xs font-medium text-fg/90">Consumido</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={isConsumed}
+                                    onChange={() => toggleConsumed(p.id)}
+                                    className="h-4 w-4 accent-[hsl(var(--accent))]"
+                                  />
+                                </label>
                                 <div className="grid grid-cols-[1fr_120px] items-end gap-3">
                                   <TextField
                                     label="Porções"
