@@ -93,7 +93,7 @@ export default function RecipesPage() {
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="font-display text-2xl tracking-tight text-fg">Receitas</div>
+          <div className="font-display text-2xl tracking-tight text-fg">Festim Viking</div>
           <div className="mt-1 text-sm text-muted">
             {useRemote ? "Catálogo online (macros estimados)." : "Catálogo local (demo)."}
           </div>

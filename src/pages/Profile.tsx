@@ -92,16 +92,16 @@ export default function ProfilePage() {
   return (
     <div className="grid gap-6">
       <div>
-        <div className="font-display text-2xl tracking-tight text-fg">Perfil do usuário</div>
+        <div className="font-display text-2xl tracking-tight text-fg">Forja do Guerreiro</div>
         <div className="mt-1 max-w-2xl text-sm text-muted">
-          Ajuste seu perfil para recomendações mais precisas. Este app não substitui orientação profissional.
+          Defina sua força, medidas e missão. O clã Viking precisa conhecer seu guerreiro para guiá-lo.
         </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="animate-fade-up" style={{ animationDelay: "60ms" } as React.CSSProperties}>
           <CardHeader>
-            <CardTitle>Dados básicos</CardTitle>
+            <CardTitle>Status do Guerreiro</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -129,7 +129,7 @@ export default function ProfilePage() {
                 onChange={(e) => setHeightCm(Number(e.target.value))}
               />
             </div>
-            <SelectField label="Nível de atividade" value={activity} onChange={(e) => setActivity(e.target.value as ActivityLevel)}>
+            <SelectField label="Classe do Guerreiro" value={activity} onChange={(e) => setActivity(e.target.value as ActivityLevel)}>
               {activityLevels.map((a) => (
                 <option key={a.value} value={a.value}>
                   {a.label}
@@ -141,7 +141,7 @@ export default function ProfilePage() {
 
         <Card className="animate-fade-up" style={{ animationDelay: "120ms" } as React.CSSProperties}>
           <CardHeader>
-            <CardTitle>Objetivo principal</CardTitle>
+            <CardTitle>Missão do Clã</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="grid gap-2 sm:grid-cols-3">
@@ -166,7 +166,7 @@ export default function ProfilePage() {
 
         <Card className="lg:col-span-2 animate-fade-up" style={{ animationDelay: "180ms" } as React.CSSProperties}>
           <CardHeader>
-            <CardTitle>Preferências e restrições</CardTitle>
+            <CardTitle>Código de Honra Alimentar</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-5">
             <div className="grid gap-2">
@@ -217,7 +217,7 @@ export default function ProfilePage() {
         <Button variant="secondary" onClick={() => navigate("/painel")} disabled={!profile}>
           Voltar
         </Button>
-        <Button onClick={onSave}>Salvar e ver recomendações</Button>
+        <Button onClick={onSave}>Forjar e Partir para Batalha</Button>
       </div>
     </div>
   );

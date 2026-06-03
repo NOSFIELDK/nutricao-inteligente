@@ -30,8 +30,8 @@ export default function InsightsPage() {
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="font-display text-2xl tracking-tight text-fg">Insights</div>
-          <div className="mt-1 text-sm text-muted">Alertas e lacunas prováveis com base no plano de hoje ({dateISO}).</div>
+          <div className="font-display text-2xl tracking-tight text-fg">Runas</div>
+          <div className="mt-1 text-sm text-muted">As runas revelam os segredos nutricionais de hoje ({dateISO}).</div>
         </div>
         {!profile ? (
           <Link to="/perfil" className="text-sm font-medium text-accent">

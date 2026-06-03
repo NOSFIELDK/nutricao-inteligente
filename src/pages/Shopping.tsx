@@ -32,9 +32,9 @@ export default function ShoppingPage() {
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="font-display text-2xl tracking-tight text-fg">Lista de compras</div>
+          <div className="font-display text-2xl tracking-tight text-fg">Saque do Guerreiro</div>
           <div className="mt-1 text-sm text-muted">
-            Baseada no plano semanal ({start} → {end}).
+            Suprimentos para a conquista ({start} → {end}).
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -51,7 +51,7 @@ export default function ShoppingPage() {
         <div className="px-5 py-4 border-b border-border/70 grid gap-3">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-medium text-fg">
-              {remaining > 0 ? `${remaining} item(ns) restantes` : list.length > 0 ? "Tudo comprado! 🎉" : "Lista vazia"}
+              {remaining > 0 ? `${remaining} item(ns) restantes` : list.length > 0 ? "O saque foi feito! Que Odin te abençoe! 🪓" : "Lista vazia"}
             </div>
             <div className="text-xs text-muted">{list.length} no total · {progressPct}%</div>
           </div>
@@ -67,7 +67,7 @@ export default function ShoppingPage() {
         <div className="grid gap-2 p-4">
           {list.length === 0 ? (
             <div className="rounded-xl bg-card-2/50 p-4 text-sm text-muted ring-1 ring-border">
-              Adicione receitas ao Plano Semanal para gerar sua lista automaticamente.
+              O armazém está vazio, guerreiro. Adicione receitas ao Plano de Conquista para gerar seu saque.
             </div>
           ) : (
             list.map((i, idx) => {

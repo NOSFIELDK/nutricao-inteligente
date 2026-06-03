@@ -34,8 +34,8 @@ export default function FoodsPage() {
   return (
     <div className="grid gap-6">
       <div>
-        <div className="font-display text-2xl tracking-tight text-fg">Alimentos & combinações</div>
-        <div className="mt-1 text-sm text-muted">Sugestões rápidas para encaixar na rotina.</div>
+        <div className="font-display text-2xl tracking-tight text-fg">Provisões de Batalha</div>
+        <div className="mt-1 text-sm text-muted">Combinações aprovadas pelo conselho Viking para máxima energia em combate.</div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
