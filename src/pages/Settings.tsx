@@ -59,11 +59,15 @@ export default function SettingsPage() {
   const [syncBusy, setSyncBusy] = React.useState(false);
 
   const profile = useAppStore((s) => s.profile);
+  const favorites = useAppStore((s) => s.favorites);
   const plan = useAppStore((s) => s.plan);
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
+  const shoppingChecked = useAppStore((s) => s.shoppingChecked);
   const manualByDate = useAppStore((s) => s.manualByDate);
   const waterByDate = useAppStore((s) => s.waterByDate);
+  const checkInByDate = useAppStore((s) => s.checkInByDate);
+  const labelScansByDate = useAppStore((s) => s.labelScansByDate);
   const customTargets = useAppStore((s) => s.customTargets);
   const setCustomTargets = useAppStore((s) => s.setCustomTargets);
   const clearCustomTargets = useAppStore((s) => s.clearCustomTargets);
@@ -77,6 +81,8 @@ export default function SettingsPage() {
   const setReminderInterval = useAppStore((s) => s.setReminderInterval);
   const addReminder = useAppStore((s) => s.addReminder);
   const removeReminder = useAppStore((s) => s.removeReminder);
+  const markSynced = useAppStore((s) => s.markSynced);
+  const applyRemote = useAppStore((s) => s.applyRemote);
 
   const baseTargets = React.useMemo(() => buildTargets(profile, null), [profile]);
   const effectiveTargets = React.useMemo(() => buildTargets(profile, customTargets), [profile, customTargets]);
@@ -99,6 +105,33 @@ export default function SettingsPage() {
         SyncApi.logout();
         setAccountEmail(null);
       });
+  }, [apiBase]);
+
+  React.useEffect(() => {
+    if (!apiBase.trim()) return;
+    const h = window.location.hash ?? "";
+    const qIndex = h.indexOf("?");
+    if (qIndex === -1) return;
+    const qs = h.slice(qIndex + 1);
+    const params = new URLSearchParams(qs);
+    const token = params.get("token");
+    const verified = params.get("verified");
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.authToken, token);
+      params.delete("token");
+      SyncApi.me()
+        .then((r) => setAccountEmail(r.email))
+        .catch(() => {});
+      setSyncStatus("Conectado.");
+    }
+    if (verified) {
+      params.delete("verified");
+      setSyncStatus("Email confirmado.");
+    }
+    if (token || verified) {
+      const nextHash = `${h.slice(0, qIndex)}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${nextHash}`);
+    }
   }, [apiBase]);
 
   const onExport = () => {
@@ -318,6 +351,26 @@ export default function SettingsPage() {
     }
   };
 
+  const onGoogleLogin = () => {
+    if (!apiConfigured) return;
+    const returnTo = `${window.location.origin}${window.location.pathname}#/configuracoes`;
+    window.location.assign(SyncApi.googleStartUrl(returnTo));
+  };
+
+  const onRequestReset = async () => {
+    if (!apiConfigured) return;
+    setSyncBusy(true);
+    setSyncStatus(null);
+    try {
+      await SyncApi.requestPasswordReset({ email: authEmail });
+      setSyncStatus("Se existir uma conta com esse email, enviamos um link de redefinição.");
+    } catch (e) {
+      setSyncStatus(e instanceof Error ? e.message : "Falha ao solicitar reset.");
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
   const onLogout = () => {
     SyncApi.logout();
     setAccountEmail(null);
@@ -329,9 +382,16 @@ export default function SettingsPage() {
     setSyncBusy(true);
     setSyncStatus(null);
     try {
-      const backup = createBackup();
-      const res = await SyncApi.pushBackup(backup);
-      setSyncStatus(`Enviado. Atualizado em ${res.updatedAt}.`);
+      const res = await SyncApi.pushItems({
+        profile: { profile, favorites, customTargets },
+        plan: { plan, consumedPlan, shoppingChecked, recipeCache },
+        tracking: { waterByDate, manualByDate, checkInByDate, labelScansByDate },
+        prefs: { reminders, highContrast, fontScale },
+      });
+      Object.entries(res.updatedAt ?? {}).forEach(([k, ts]) => {
+        if (ts) markSynced(k as SyncApi.SyncV2Key, ts);
+      });
+      setSyncStatus("Enviado.");
     } catch (e) {
       setSyncStatus(e instanceof Error ? e.message : "Falha ao enviar.");
     } finally {
@@ -345,12 +405,18 @@ export default function SettingsPage() {
     setSyncBusy(true);
     setSyncStatus(null);
     try {
-      const res = await SyncApi.pullBackup();
-      if (!res.backup) {
+      const res = await SyncApi.pullItems();
+      const items = res.items ?? {};
+      const keys = Object.keys(items) as SyncApi.SyncV2Key[];
+      if (keys.length === 0) {
         setSyncStatus("Sem dados salvos no servidor.");
         return;
       }
-      restoreBackup(res.backup);
+      keys.forEach((k) => {
+        const item = items[k];
+        if (!item) return;
+        applyRemote(k, item.data, item.updatedAt);
+      });
       window.location.reload();
     } catch (e) {
       setSyncStatus(e instanceof Error ? e.message : "Falha ao baixar.");
@@ -446,6 +512,12 @@ export default function SettingsPage() {
                   </Button>
                   <Button variant="secondary" onClick={onRegister} disabled={!apiConfigured || syncBusy || !authEmail.trim() || authPassword.length < 8}>
                     Criar conta
+                  </Button>
+                  <Button variant="secondary" onClick={onGoogleLogin} disabled={!apiConfigured || syncBusy}>
+                    Entrar com Google
+                  </Button>
+                  <Button variant="ghost" onClick={onRequestReset} disabled={!apiConfigured || syncBusy || !authEmail.trim()}>
+                    Esqueci minha senha
                   </Button>
                 </>
               )}

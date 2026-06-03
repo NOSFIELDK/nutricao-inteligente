@@ -44,12 +44,17 @@ export default function HistoryPage() {
   const consumedPlan = useAppStore((s) => s.consumedPlan);
   const waterByDate = useAppStore((s) => s.waterByDate);
   const manualByDate = useAppStore((s) => s.manualByDate);
+  const checkInByDate = useAppStore((s) => s.checkInByDate);
+  const labelScansByDate = useAppStore((s) => s.labelScansByDate);
   const customTargets = useAppStore((s) => s.customTargets);
   const addWater = useAppStore((s) => s.addWater);
   const setWater = useAppStore((s) => s.setWater);
   const toggleConsumed = useAppStore((s) => s.toggleConsumed);
   const addManualEntry = useAppStore((s) => s.addManualEntry);
   const removeManualEntry = useAppStore((s) => s.removeManualEntry);
+  const setCheckIn = useAppStore((s) => s.setCheckIn);
+  const addLabelScan = useAppStore((s) => s.addLabelScan);
+  const removeLabelScan = useAppStore((s) => s.removeLabelScan);
 
   const mergedCatalog: CatalogItem[] = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
   const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
@@ -62,11 +67,19 @@ export default function HistoryPage() {
   const [manualFat, setManualFat] = React.useState("");
   const [manualFiber, setManualFiber] = React.useState("");
 
+  const [labelProduct, setLabelProduct] = React.useState("");
+  const [labelServing, setLabelServing] = React.useState("");
+  const [labelCalories, setLabelCalories] = React.useState("");
+  const [labelSugar, setLabelSugar] = React.useState("");
+  const [labelSodium, setLabelSodium] = React.useState("");
+
   const selectedPlan = React.useMemo(() => {
     return plan.filter((p) => p.dateISO === selectedDate).slice().sort((a, b) => slots.indexOf(a.mealSlot) - slots.indexOf(b.mealSlot));
   }, [plan, selectedDate]);
 
   const manualEntries = manualByDate[selectedDate] ?? [];
+  const checkIn = checkInByDate[selectedDate] ?? { dateISO: selectedDate, sleepHours: null, mood: null, hunger: null, training: false, notes: "" };
+  const labelScans = labelScansByDate[selectedDate] ?? [];
 
   const consumedSelectedPlan = React.useMemo(() => {
     return selectedPlan.filter((p) => consumedPlan[p.id]);
@@ -265,6 +278,127 @@ export default function HistoryPage() {
                     </Button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-display text-lg tracking-tight text-fg">Check-in do dia</div>
+              <div className="text-xs text-muted">sono · humor · fome · treino</div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField
+                  label="Sono (horas)"
+                  inputMode="decimal"
+                  value={checkIn.sleepHours == null ? "" : String(checkIn.sleepHours)}
+                  onChange={(e) => setCheckIn(selectedDate, { sleepHours: e.target.value ? Math.max(0, Number(e.target.value) || 0) : null })}
+                />
+                <TextField
+                  label="Treino (0/1)"
+                  inputMode="numeric"
+                  value={checkIn.training ? "1" : "0"}
+                  onChange={(e) => setCheckIn(selectedDate, { training: e.target.value.trim() === "1" })}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField
+                  label="Humor (1–5)"
+                  inputMode="numeric"
+                  value={checkIn.mood == null ? "" : String(checkIn.mood)}
+                  onChange={(e) => {
+                    const v = e.target.value ? Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1))) : null;
+                    setCheckIn(selectedDate, { mood: v as any });
+                  }}
+                />
+                <TextField
+                  label="Fome (1–5)"
+                  inputMode="numeric"
+                  value={checkIn.hunger == null ? "" : String(checkIn.hunger)}
+                  onChange={(e) => {
+                    const v = e.target.value ? Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1))) : null;
+                    setCheckIn(selectedDate, { hunger: v as any });
+                  }}
+                />
+              </div>
+              <TextField label="Notas (opcional)" value={checkIn.notes} onChange={(e) => setCheckIn(selectedDate, { notes: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-display text-lg tracking-tight text-fg">Rótulo (rápido)</div>
+              <div className="text-xs text-muted">alerta açúcar/sódio</div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField label="Produto" placeholder="Ex.: iogurte" value={labelProduct} onChange={(e) => setLabelProduct(e.target.value)} />
+                <TextField label="Porção" placeholder="Ex.: 170g" value={labelServing} onChange={(e) => setLabelServing(e.target.value)} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <TextField label="Calorias (kcal)" inputMode="numeric" value={labelCalories} onChange={(e) => setLabelCalories(e.target.value)} />
+                <TextField label="Açúcar (g)" inputMode="decimal" value={labelSugar} onChange={(e) => setLabelSugar(e.target.value)} />
+                <TextField label="Sódio (mg)" inputMode="numeric" value={labelSodium} onChange={(e) => setLabelSodium(e.target.value)} />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    if (!labelProduct.trim()) return;
+                    addLabelScan({
+                      dateISO: selectedDate,
+                      product: labelProduct.trim(),
+                      serving: labelServing.trim(),
+                      caloriesKcal: labelCalories ? Math.max(0, Math.round(Number(labelCalories) || 0)) : null,
+                      sugarG: Math.max(0, Number(labelSugar) || 0),
+                      sodiumMg: Math.max(0, Math.round(Number(labelSodium) || 0)),
+                    });
+                    setLabelProduct("");
+                    setLabelServing("");
+                    setLabelCalories("");
+                    setLabelSugar("");
+                    setLabelSodium("");
+                  }}
+                  disabled={!labelProduct.trim()}
+                >
+                  Salvar
+                </Button>
+              </div>
+            </div>
+
+            {labelScans.length > 0 && (
+              <div className="mt-4 grid gap-2">
+                {labelScans.map((s) => {
+                  const flags = [
+                    s.sugarG >= 10 ? "Açúcar alto" : null,
+                    s.sodiumMg >= 400 ? "Sódio alto" : null,
+                  ].filter(Boolean) as string[];
+                  return (
+                    <div key={s.id} className="flex items-start justify-between gap-3 rounded-xl bg-card-2/45 p-3 ring-1 ring-border">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-fg">
+                          {s.product} {s.serving ? `· ${s.serving}` : ""}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted">
+                          {s.caloriesKcal != null ? `${s.caloriesKcal}kcal · ` : ""}
+                          Açúcar {s.sugarG}g · Sódio {s.sodiumMg}mg
+                        </div>
+                        {flags.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {flags.map((f) => (
+                              <Badge key={f} tone="accent2">
+                                {f}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => removeLabelScan(selectedDate, s.id)}>
+                        Remover
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

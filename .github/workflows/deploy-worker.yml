@@ -29,11 +29,46 @@ jobs:
         run: npm ci
         working-directory: cf-worker
 
+      - name: Apply migrations (D1) 0001
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: cf-worker
+          command: d1 execute nutricao-inteligente --file=./migrations/0001_auth_sync.sql --remote
+
+      - name: Apply migrations (D1) 0002
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: cf-worker
+          command: d1 execute nutricao-inteligente --file=./migrations/0002_oauth_email.sql --remote
+
+      - name: Apply migrations (D1) 0003
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: cf-worker
+          command: d1 execute nutricao-inteligente --file=./migrations/0003_sync_items.sql --remote
+
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
           command: deploy
-        # USDA_API_KEY é opcional — configure via `wrangler secret put USDA_API_KEY`
-        # se quiser macros reais nas receitas remotas
+          secrets: |
+            USDA_API_KEY
+            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_SECRET
+            RESEND_API_KEY
+            EMAIL_FROM
+            APP_ORIGIN
+            CORS_ORIGINS
+        env:
+          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}

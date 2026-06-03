@@ -59,6 +59,14 @@ export async function login(params: { email: string; password: string }) {
   return data as { ok: true; token: string; expiresAt: string };
 }
 
+export function googleStartUrl(returnTo: string) {
+  const { base, path } = apiPath("/auth/google/start");
+  if (!base) throw new Error("API base não configurada.");
+  const u = new URL(join(base, path));
+  u.searchParams.set("returnTo", returnTo);
+  return u.toString();
+}
+
 export function logout() {
   localStorage.removeItem(STORAGE_KEYS.authToken);
 }
@@ -102,3 +110,58 @@ export async function pullBackup() {
   return { ok: true as const, backup, updatedAt: data?.updatedAt as string | null };
 }
 
+export type SyncV2Key = "profile" | "plan" | "tracking" | "prefs";
+
+export async function pushItems(items: Partial<Record<SyncV2Key, unknown>>) {
+  const { base, path } = apiPath("/sync/v2/push");
+  if (!base) throw new Error("API base não configurada.");
+  const res = await fetch(join(base, path), {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ items }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message ?? "Falha ao enviar.");
+  return data as { ok: true; updatedAt: Partial<Record<SyncV2Key, string>> };
+}
+
+export async function pullItems() {
+  const { base, path } = apiPath("/sync/v2/pull");
+  if (!base) throw new Error("API base não configurada.");
+  const res = await fetch(join(base, path), {
+    method: "GET",
+    headers: { ...authHeaders() },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message ?? "Falha ao baixar.");
+  return data as {
+    ok: true;
+    items: Partial<Record<SyncV2Key, { data: unknown; updatedAt: string }>>;
+  };
+}
+
+export async function requestPasswordReset(params: { email: string }) {
+  const { base, path } = apiPath("/auth/password/request-reset");
+  if (!base) throw new Error("API base não configurada.");
+  const res = await fetch(join(base, path), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message ?? "Falha ao solicitar reset.");
+  return data as { ok: true };
+}
+
+export async function resetPassword(params: { token: string; newPassword: string }) {
+  const { base, path } = apiPath("/auth/password/reset");
+  if (!base) throw new Error("API base não configurada.");
+  const res = await fetch(join(base, path), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message ?? "Falha ao resetar senha.");
+  return data as { ok: true };
+}

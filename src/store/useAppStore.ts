@@ -1,7 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { AppReminder, CatalogItem, Favorite, FontScale, ManualEntry, MealSlot, NutritionTargets, PlanItem, Recipe, ReminderInterval, UserProfile } from "@/domain/models";
+import type {
+  AppReminder,
+  CatalogItem,
+  DailyCheckIn,
+  Favorite,
+  FontScale,
+  LabelScan,
+  ManualEntry,
+  MealSlot,
+  NutritionTargets,
+  PlanItem,
+  Recipe,
+  ReminderInterval,
+  UserProfile,
+} from "@/domain/models";
 import { STORAGE_KEYS } from "@/storage/keys";
 import { uid } from "@/utils/id";
 
@@ -21,9 +35,13 @@ type AppState = {
   consumedPlan: Record<string, boolean>;
   waterByDate: Record<string, number>;
   manualByDate: Record<string, ManualEntry[]>;
+  checkInByDate: Record<string, DailyCheckIn>;
+  labelScansByDate: Record<string, LabelScan[]>;
   customTargets: NutritionTargets | null;
   highContrast: boolean;
   fontScale: FontScale;
+  syncDirty: Partial<Record<"profile" | "plan" | "tracking" | "prefs", boolean>>;
+  syncLastSyncedAt: Partial<Record<"profile" | "plan" | "tracking" | "prefs", string>>;
 
   setProfile: (profile: UserProfile) => void;
   clearProfile: () => void;
@@ -48,6 +66,10 @@ type AppState = {
   addManualEntry: (params: Omit<ManualEntry, "id">) => void;
   removeManualEntry: (dateISO: string, id: string) => void;
 
+  setCheckIn: (dateISO: string, patch: Partial<Omit<DailyCheckIn, "dateISO">>) => void;
+  addLabelScan: (params: Omit<LabelScan, "id">) => void;
+  removeLabelScan: (dateISO: string, id: string) => void;
+
   setCustomTargets: (targets: NutritionTargets) => void;
   clearCustomTargets: () => void;
 
@@ -58,6 +80,9 @@ type AppState = {
   setReminderInterval: (id: string, interval: ReminderInterval) => void;
   addReminder: (label: string, message: string, intervalMinutes: ReminderInterval) => void;
   removeReminder: (id: string) => void;
+
+  markSynced: (key: "profile" | "plan" | "tracking" | "prefs", updatedAt: string) => void;
+  applyRemote: (key: "profile" | "plan" | "tracking" | "prefs", data: unknown, updatedAt: string) => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -72,11 +97,15 @@ export const useAppStore = create<AppState>()(
       consumedPlan: {},
       waterByDate: {},
       manualByDate: {},
+      checkInByDate: {},
+      labelScansByDate: {},
       customTargets: null,
       highContrast: false,
       fontScale: "100",
+      syncDirty: {},
+      syncLastSyncedAt: {},
 
-      setProfile: (profile) => set({ profile }),
+      setProfile: (profile) => set((s) => ({ profile, syncDirty: { ...s.syncDirty, profile: true } })),
       clearProfile: () =>
         set({
           profile: null,
@@ -87,22 +116,29 @@ export const useAppStore = create<AppState>()(
           consumedPlan: {},
           waterByDate: {},
           manualByDate: {},
+          checkInByDate: {},
+          labelScansByDate: {},
           customTargets: null,
+          syncDirty: { profile: true, plan: true, tracking: true, prefs: true },
         }),
 
       toggleFavorite: (item) => {
         const { favorites } = get();
         const found = favorites.find((f) => f.itemType === item.type && f.itemId === item.id);
         if (found) {
-          set({ favorites: favorites.filter((f) => f.id !== found.id) });
+          set((s) => ({
+            favorites: favorites.filter((f) => f.id !== found.id),
+            syncDirty: { ...s.syncDirty, profile: true },
+          }));
           return;
         }
         if (item.type === "recipe") {
-          set({ recipeCache: { ...get().recipeCache, [item.id]: item } });
+          set((s) => ({ recipeCache: { ...s.recipeCache, [item.id]: item }, syncDirty: { ...s.syncDirty, plan: true } }));
         }
-        set({
+        set((s) => ({
           favorites: [...favorites, { id: uid("fav"), itemType: item.type, itemId: item.id }],
-        });
+          syncDirty: { ...s.syncDirty, profile: true },
+        }));
       },
 
       isFavorite: (item) => {
@@ -111,51 +147,59 @@ export const useAppStore = create<AppState>()(
 
       addToPlan: ({ item, dateISO, mealSlot, servings = 1 }) => {
         if (item.type === "recipe") {
-          set({ recipeCache: { ...get().recipeCache, [item.id]: item } });
+          set((s) => ({ recipeCache: { ...s.recipeCache, [item.id]: item }, syncDirty: { ...s.syncDirty, plan: true } }));
         }
-        set({
-          plan: [
-            ...get().plan,
-            { id: uid("plan"), dateISO, mealSlot, itemType: item.type, itemId: item.id, servings },
-          ],
-        });
+        set((s) => ({
+          plan: [...s.plan, { id: uid("plan"), dateISO, mealSlot, itemType: item.type, itemId: item.id, servings }],
+          syncDirty: { ...s.syncDirty, plan: true },
+        }));
       },
 
       removeFromPlan: (id) =>
-        set({
-          plan: get().plan.filter((p) => p.id !== id),
-          consumedPlan: Object.fromEntries(Object.entries(get().consumedPlan).filter(([k]) => k !== id)),
-        }),
+        set((s) => ({
+          plan: s.plan.filter((p) => p.id !== id),
+          consumedPlan: Object.fromEntries(Object.entries(s.consumedPlan).filter(([k]) => k !== id)),
+          syncDirty: { ...s.syncDirty, plan: true },
+        })),
 
       setPlanItemServings: (id, servings) =>
-        set({
-          plan: get().plan.map((p) => (p.id === id ? { ...p, servings: Math.max(1, Math.round(servings)) } : p)),
-        }),
+        set((s) => ({
+          plan: s.plan.map((p) => (p.id === id ? { ...p, servings: Math.max(1, Math.round(servings)) } : p)),
+          syncDirty: { ...s.syncDirty, plan: true },
+        })),
 
-      clearPlan: () => set({ plan: [], shoppingChecked: {}, consumedPlan: {} }),
+      clearPlan: () => set((s) => ({ plan: [], shoppingChecked: {}, consumedPlan: {}, syncDirty: { ...s.syncDirty, plan: true } })),
 
       setShoppingChecked: (key, checked) =>
-        set({ shoppingChecked: { ...get().shoppingChecked, [key]: checked } }),
+        set((s) => ({ shoppingChecked: { ...s.shoppingChecked, [key]: checked }, syncDirty: { ...s.syncDirty, plan: true } })),
 
-      clearShoppingChecked: () => set({ shoppingChecked: {} }),
+      clearShoppingChecked: () => set((s) => ({ shoppingChecked: {}, syncDirty: { ...s.syncDirty, plan: true } })),
 
       cacheRecipes: (recipes) => {
         if (recipes.length === 0) return;
         const next = { ...get().recipeCache };
         for (const r of recipes) next[r.id] = r;
-        set({ recipeCache: next });
+        set((s) => ({ recipeCache: next, syncDirty: { ...s.syncDirty, plan: true } }));
       },
 
       toggleConsumed: (planItemId) =>
-        set({
-          consumedPlan: { ...get().consumedPlan, [planItemId]: !get().consumedPlan[planItemId] },
-        }),
+        set((s) => ({
+          consumedPlan: { ...s.consumedPlan, [planItemId]: !s.consumedPlan[planItemId] },
+          syncDirty: { ...s.syncDirty, plan: true },
+        })),
 
-      setWater: (dateISO, waterMl) => set({ waterByDate: { ...get().waterByDate, [dateISO]: Math.max(0, Math.round(waterMl)) } }),
+      setWater: (dateISO, waterMl) =>
+        set((s) => ({
+          waterByDate: { ...s.waterByDate, [dateISO]: Math.max(0, Math.round(waterMl)) },
+          syncDirty: { ...s.syncDirty, tracking: true },
+        })),
 
       addWater: (dateISO, deltaMl) => {
         const current = get().waterByDate[dateISO] ?? 0;
-        set({ waterByDate: { ...get().waterByDate, [dateISO]: Math.max(0, Math.round(current + deltaMl)) } });
+        set((s) => ({
+          waterByDate: { ...s.waterByDate, [dateISO]: Math.max(0, Math.round(current + deltaMl)) },
+          syncDirty: { ...s.syncDirty, tracking: true },
+        }));
       },
 
       addManualEntry: (params) => {
@@ -169,7 +213,10 @@ export const useAppStore = create<AppState>()(
           fiberG: Math.max(0, Number(params.fiberG) || 0),
         };
         const current = get().manualByDate[params.dateISO] ?? [];
-        set({ manualByDate: { ...get().manualByDate, [params.dateISO]: [entry, ...current] } });
+        set((s) => ({
+          manualByDate: { ...s.manualByDate, [params.dateISO]: [entry, ...current] },
+          syncDirty: { ...s.syncDirty, tracking: true },
+        }));
       },
 
       removeManualEntry: (dateISO, id) => {
@@ -177,39 +224,120 @@ export const useAppStore = create<AppState>()(
         const next = current.filter((e) => e.id !== id);
         const map = { ...get().manualByDate, [dateISO]: next };
         if (next.length === 0) delete map[dateISO];
-        set({ manualByDate: map });
+        set((s) => ({ manualByDate: map, syncDirty: { ...s.syncDirty, tracking: true } }));
+      },
+
+      setCheckIn: (dateISO, patch) => {
+        const current = get().checkInByDate[dateISO] ?? { dateISO, sleepHours: null, mood: null, hunger: null, training: false, notes: "" };
+        const next: DailyCheckIn = { ...current, ...patch, dateISO };
+        set((s) => ({ checkInByDate: { ...s.checkInByDate, [dateISO]: next }, syncDirty: { ...s.syncDirty, tracking: true } }));
+      },
+
+      addLabelScan: (params) => {
+        const entry: LabelScan = { ...params, id: uid("lbl") };
+        const current = get().labelScansByDate[params.dateISO] ?? [];
+        set((s) => ({
+          labelScansByDate: { ...s.labelScansByDate, [params.dateISO]: [entry, ...current] },
+          syncDirty: { ...s.syncDirty, tracking: true },
+        }));
+      },
+
+      removeLabelScan: (dateISO, id) => {
+        const current = get().labelScansByDate[dateISO] ?? [];
+        const next = current.filter((e) => e.id !== id);
+        const map = { ...get().labelScansByDate, [dateISO]: next };
+        if (next.length === 0) delete map[dateISO];
+        set((s) => ({ labelScansByDate: map, syncDirty: { ...s.syncDirty, tracking: true } }));
       },
 
       setCustomTargets: (targets) =>
-        set({
+        set((s) => ({
           customTargets: {
             proteinG: Math.max(0, Number(targets.proteinG) || 0),
             fiberG: Math.max(0, Number(targets.fiberG) || 0),
             waterMl: Math.max(0, Math.round(Number(targets.waterMl) || 0)),
           },
-        }),
+          syncDirty: { ...s.syncDirty, profile: true },
+        })),
 
-      clearCustomTargets: () => set({ customTargets: null }),
+      clearCustomTargets: () => set((s) => ({ customTargets: null, syncDirty: { ...s.syncDirty, profile: true } })),
 
-      setHighContrast: (enabled) => set({ highContrast: enabled }),
+      setHighContrast: (enabled) => set((s) => ({ highContrast: enabled, syncDirty: { ...s.syncDirty, prefs: true } })),
 
-      setFontScale: (scale) => set({ fontScale: scale }),
+      setFontScale: (scale) => set((s) => ({ fontScale: scale, syncDirty: { ...s.syncDirty, prefs: true } })),
 
       setReminderEnabled: (id, enabled) =>
-        set({ reminders: get().reminders.map((r) => (r.id === id ? { ...r, enabled } : r)) }),
+        set((s) => ({
+          reminders: s.reminders.map((r) => (r.id === id ? { ...r, enabled } : r)),
+          syncDirty: { ...s.syncDirty, prefs: true },
+        })),
 
       setReminderInterval: (id, intervalMinutes) =>
-        set({ reminders: get().reminders.map((r) => (r.id === id ? { ...r, intervalMinutes } : r)) }),
+        set((s) => ({
+          reminders: s.reminders.map((r) => (r.id === id ? { ...r, intervalMinutes } : r)),
+          syncDirty: { ...s.syncDirty, prefs: true },
+        })),
 
       addReminder: (label, message, intervalMinutes) =>
-        set({ reminders: [...get().reminders, { id: uid("rem"), label, message, intervalMinutes, enabled: true }] }),
+        set((s) => ({
+          reminders: [...s.reminders, { id: uid("rem"), label, message, intervalMinutes, enabled: true }],
+          syncDirty: { ...s.syncDirty, prefs: true },
+        })),
 
       removeReminder: (id) =>
-        set({ reminders: get().reminders.filter((r) => r.id !== id) }),
+        set((s) => ({ reminders: s.reminders.filter((r) => r.id !== id), syncDirty: { ...s.syncDirty, prefs: true } })),
+
+      markSynced: (key, updatedAt) => set((s) => ({ syncDirty: { ...s.syncDirty, [key]: false }, syncLastSyncedAt: { ...s.syncLastSyncedAt, [key]: updatedAt } })),
+
+      applyRemote: (key, data, updatedAt) => {
+        if (key === "profile") {
+          const d = data as Partial<Pick<AppState, "profile" | "favorites" | "customTargets">>;
+          set((s) => ({
+            profile: d.profile ?? s.profile,
+            favorites: d.favorites ?? s.favorites,
+            customTargets: d.customTargets ?? s.customTargets,
+            syncDirty: { ...s.syncDirty, profile: false },
+            syncLastSyncedAt: { ...s.syncLastSyncedAt, profile: updatedAt },
+          }));
+          return;
+        }
+        if (key === "plan") {
+          const d = data as Partial<Pick<AppState, "plan" | "consumedPlan" | "shoppingChecked" | "recipeCache">>;
+          set((s) => ({
+            plan: d.plan ?? s.plan,
+            consumedPlan: d.consumedPlan ?? s.consumedPlan,
+            shoppingChecked: d.shoppingChecked ?? s.shoppingChecked,
+            recipeCache: d.recipeCache ?? s.recipeCache,
+            syncDirty: { ...s.syncDirty, plan: false },
+            syncLastSyncedAt: { ...s.syncLastSyncedAt, plan: updatedAt },
+          }));
+          return;
+        }
+        if (key === "tracking") {
+          const d = data as Partial<Pick<AppState, "waterByDate" | "manualByDate" | "checkInByDate" | "labelScansByDate">>;
+          set((s) => ({
+            waterByDate: d.waterByDate ?? s.waterByDate,
+            manualByDate: d.manualByDate ?? s.manualByDate,
+            checkInByDate: d.checkInByDate ?? s.checkInByDate,
+            labelScansByDate: d.labelScansByDate ?? s.labelScansByDate,
+            syncDirty: { ...s.syncDirty, tracking: false },
+            syncLastSyncedAt: { ...s.syncLastSyncedAt, tracking: updatedAt },
+          }));
+          return;
+        }
+        const d = data as Partial<Pick<AppState, "reminders" | "highContrast" | "fontScale">>;
+        set((s) => ({
+          reminders: d.reminders ?? s.reminders,
+          highContrast: typeof d.highContrast === "boolean" ? d.highContrast : s.highContrast,
+          fontScale: d.fontScale ?? s.fontScale,
+          syncDirty: { ...s.syncDirty, prefs: false },
+          syncLastSyncedAt: { ...s.syncLastSyncedAt, prefs: updatedAt },
+        }));
+      },
     }),
     {
       name: STORAGE_KEYS.state,
-      version: 5,
+      version: 7,
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState>;
         return {
@@ -222,9 +350,13 @@ export const useAppStore = create<AppState>()(
           consumedPlan: version < 4 ? {} : state.consumedPlan ?? {},
           waterByDate: version < 4 ? {} : state.waterByDate ?? {},
           manualByDate: version < 5 ? {} : state.manualByDate ?? {},
+          checkInByDate: version < 7 ? {} : state.checkInByDate ?? {},
+          labelScansByDate: version < 7 ? {} : state.labelScansByDate ?? {},
           customTargets: version < 5 ? null : state.customTargets ?? null,
           highContrast: version < 5 ? false : state.highContrast ?? false,
           fontScale: version < 5 ? "100" : state.fontScale ?? "100",
+          syncDirty: version < 6 ? {} : state.syncDirty ?? {},
+          syncLastSyncedAt: version < 6 ? {} : state.syncLastSyncedAt ?? {},
         };
       },
       partialize: (state) => ({
@@ -237,9 +369,13 @@ export const useAppStore = create<AppState>()(
         consumedPlan: state.consumedPlan,
         waterByDate: state.waterByDate,
         manualByDate: state.manualByDate,
+        checkInByDate: state.checkInByDate,
+        labelScansByDate: state.labelScansByDate,
         customTargets: state.customTargets,
         highContrast: state.highContrast,
         fontScale: state.fontScale,
+        syncDirty: state.syncDirty,
+        syncLastSyncedAt: state.syncLastSyncedAt,
       }),
     },
   ),
