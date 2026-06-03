@@ -1,9 +1,10 @@
 import type { CatalogItem, FoodSuggestion, Recipe, Supplement } from "@/domain/models";
 
-function img(prompt: string, _imageSize: string) {
+function img(prompt: string, imageSize: string) {
   let h = 0;
   for (let i = 0; i < prompt.length; i++) h = (Math.imul(31, h) + prompt.charCodeAt(i)) | 0;
-  return `https://picsum.photos/seed/${Math.abs(h)}/800/450`;
+  const seededPrompt = `${prompt}, seed ${Math.abs(h)}`;
+  return `https://coreva-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(seededPrompt)}&image_size=${encodeURIComponent(imageSize)}`;
 }
 
 export const recipes: Recipe[] = [

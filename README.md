@@ -48,6 +48,10 @@ npm run dev
 
 Acesse o endereço exibido no terminal (por padrão `http://localhost:5173`).
 
+## Receitas online (quase infinitas)
+
+O app funciona offline com um catálogo local (demo). Para habilitar catálogo online com macros estimados, publique o worker em [cf-worker](file:///c:/Users/Pichau/Documents/trae_projects/nutricao-inteligente/cf-worker) e cole a URL em **Configurações → API de receitas**.
+
 ## Scripts disponíveis
 
 | Comando | Descrição |

@@ -67,7 +67,10 @@ export default function SettingsPage() {
   };
 
   const onSaveApiBase = () => {
-    const cleaned = apiBase.trim().replace(/\/+$/g, "");
+    const cleaned = apiBase
+      .trim()
+      .replace(/\/+$/g, "")
+      .replace(/\/api\/?$/i, "");
     if (!cleaned) {
       localStorage.removeItem(STORAGE_KEYS.apiBase);
       window.location.reload();
