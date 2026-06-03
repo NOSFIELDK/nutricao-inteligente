@@ -89,9 +89,9 @@ export default function DashboardPage() {
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="font-display text-2xl tracking-tight text-fg">Recomendações</div>
+          <div className="font-display text-2xl tracking-tight text-fg">Conselho dos Deuses</div>
           <div className="mt-1 max-w-2xl text-sm text-muted">
-            Conteúdo sugerido com base no seu objetivo, restrições e preferências. Sempre ajuste para sua rotina.
+            As divindades nórdicas indicam o caminho. Siga as recomendações e conquiste sua melhor forma.
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -106,14 +106,14 @@ export default function DashboardPage() {
 
       {!profile ? (
         <div className="rounded-2xl bg-card/80 p-6 ring-1 ring-border shadow-crisp">
-          <div className="font-display text-xl tracking-tight text-fg">Comece pelo perfil</div>
-          <div className="mt-2 text-sm text-muted">Em 2 minutos você define objetivo, restrições e preferências.</div>
+          <div className="font-display text-xl tracking-tight text-fg">Forje seu Guerreiro</div>
+          <div className="mt-2 text-sm text-muted">Defina sua missão, restrições e objetivos. O clã precisa conhecer seu guerreiro.</div>
           <div className="mt-4">
             <Link
               to="/perfil"
               className="inline-flex h-10 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02] active:translate-y-px active:shadow-none"
             >
-              Criar perfil
+              Forjar Guerreiro
             </Link>
           </div>
         </div>
@@ -176,9 +176,9 @@ export default function DashboardPage() {
 
           {recommendations.length === 0 ? (
             <div className="rounded-2xl bg-card/80 p-6 ring-1 ring-border shadow-crisp animate-fade-up">
-              <div className="font-display text-lg tracking-tight text-fg">Nenhuma sugestão nesta categoria</div>
+              <div className="font-display text-lg tracking-tight text-fg">O conselho está em silêncio para esta categoria</div>
               <div className="mt-1 text-sm text-muted">
-                Tente outra aba ou ajuste suas preferências no perfil.
+                Explore outra aba ou refine seu perfil para receber orientações do clã.
               </div>
             </div>
           ) : (

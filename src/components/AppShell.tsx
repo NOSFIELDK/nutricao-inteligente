@@ -1,4 +1,4 @@
-import { Apple, BarChart3, CalendarDays, Dumbbell, LayoutDashboard, Leaf, Settings, ShoppingBasket, Sparkles, UtensilsCrossed } from "lucide-react";
+import { Apple, BarChart3, CalendarDays, Dumbbell, LayoutDashboard, Settings, ShoppingBasket, Sparkles, Sword, UtensilsCrossed } from "lucide-react";
 import * as React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -8,20 +8,36 @@ import { useTheme } from "@/hooks/useTheme";
 type NavItem = {
   to: string;
   label: string;
+  subtitle: string;
   Icon: React.ComponentType<{ className?: string }>;
 };
 
 const nav: NavItem[] = [
-  { to: "/painel", label: "Painel", Icon: LayoutDashboard },
-  { to: "/historico", label: "Histórico", Icon: BarChart3 },
-  { to: "/receitas", label: "Receitas", Icon: UtensilsCrossed },
-  { to: "/alimentos", label: "Alimentos", Icon: Apple },
-  { to: "/suplementos", label: "Suplementos", Icon: Dumbbell },
-  { to: "/plano", label: "Plano", Icon: CalendarDays },
-  { to: "/compras", label: "Compras", Icon: ShoppingBasket },
-  { to: "/insights", label: "Insights", Icon: Sparkles },
-  { to: "/configuracoes", label: "Ajustes", Icon: Settings },
+  { to: "/painel",       label: "Salão",      subtitle: "Painel",       Icon: LayoutDashboard },
+  { to: "/historico",    label: "Crônicas",   subtitle: "Histórico",    Icon: BarChart3 },
+  { to: "/receitas",     label: "Festim",     subtitle: "Receitas",     Icon: UtensilsCrossed },
+  { to: "/alimentos",    label: "Provisões",  subtitle: "Alimentos",    Icon: Apple },
+  { to: "/suplementos",  label: "Poções",     subtitle: "Suplementos",  Icon: Dumbbell },
+  { to: "/plano",        label: "Conquista",  subtitle: "Plano",        Icon: CalendarDays },
+  { to: "/compras",      label: "Saque",      subtitle: "Compras",      Icon: ShoppingBasket },
+  { to: "/insights",     label: "Runas",      subtitle: "Insights",     Icon: Sparkles },
+  { to: "/configuracoes",label: "Forja",      subtitle: "Ajustes",      Icon: Settings },
 ];
+
+const VIKING_QUOTES = [
+  "A força de um guerreiro vem do que ele come e de como ele treina.",
+  "Forje seu corpo como um ferreiro forja uma espada — com fogo e disciplina.",
+  "Odin sabia: sem nutrição, não há conquista.",
+  "Vikings não descansam até a batalha estar vencida. Nem sua alimentação.",
+  "Um guerreiro saudável conquista mais territórios. Cuide do seu templo.",
+  "A mesa do festim é sagrada. Escolha bem o que coloca nela.",
+  "Não há glória sem sacrifício. Não há vitória sem preparo.",
+  "Thor é forte porque come forte. Você também pode.",
+];
+
+function useVikingQuote() {
+  return React.useMemo(() => VIKING_QUOTES[Math.floor(Math.random() * VIKING_QUOTES.length)], []);
+}
 
 function Brand() {
   return (
@@ -53,21 +69,24 @@ function ThemeToggle() {
   );
 }
 
-function NavItemLink({ to, label, Icon }: NavItem) {
+function NavItemLink({ to, label, subtitle, Icon }: NavItem) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
         cn(
-          "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm ring-1 transition-all duration-150",
+          "group flex items-center gap-3 rounded-xl px-3 py-2 ring-1 transition-all duration-150",
           isActive
             ? "bg-accent/16 text-fg ring-accent/30 shadow-[0_0_0_1px_hsl(var(--accent)/0.18),inset_0_1px_0_hsl(var(--accent)/0.12)]"
             : "bg-transparent text-muted ring-transparent hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
         )
       }
     >
-      <Icon className={cn("h-4 w-4 transition-transform duration-150", "group-hover:scale-110")} />
-      <span className="truncate">{label}</span>
+      <Icon className={cn("h-4 w-4 shrink-0 transition-transform duration-150", "group-hover:scale-110")} />
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium leading-tight">{label}</div>
+        <div className="truncate text-[10px] leading-tight opacity-50">{subtitle}</div>
+      </div>
     </NavLink>
   );
 }
@@ -89,6 +108,19 @@ function BottomItemLink({ to, label, Icon }: NavItem) {
   );
 }
 
+function VikingQuoteCard() {
+  const quote = useVikingQuote();
+  return (
+    <div className="rounded-2xl bg-accent/8 p-4 ring-1 ring-accent/20 shadow-crisp">
+      <div className="mb-2 flex items-center gap-1.5">
+        <span className="text-base">⚔️</span>
+        <span className="font-display text-xs font-bold tracking-wide text-accent">Palavra do Guerreiro</span>
+      </div>
+      <p className="text-xs leading-relaxed text-muted italic">"{quote}"</p>
+    </div>
+  );
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
   return (
@@ -106,12 +138,7 @@ export function AppShell() {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl bg-accent/8 p-4 text-xs text-muted ring-1 ring-accent/20 shadow-crisp">
-            <div className="font-display text-xs font-bold tracking-wide text-accent">Dica do Guerreiro</div>
-            <div className="mt-1 leading-relaxed">
-              Use o Plano Semanal para gerar sua lista de compras automaticamente e manter consistência nos macros.
-            </div>
-          </div>
+          <VikingQuoteCard />
         </aside>
         <main key={pathname} className="min-w-0 animate-page-in">
           <Outlet />

@@ -113,9 +113,9 @@ export default function PlanPage() {
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="font-display text-2xl tracking-tight text-fg">Plano semanal</div>
+          <div className="font-display text-2xl tracking-tight text-fg">Conquista Semanal</div>
           <div className="mt-1 text-sm text-muted">
-            Semana atual: {start} → {end}. Monte o plano para gerar a lista de compras.
+            Semana atual: {start} → {end}. Planeje suas batalhas alimentares. A vitória começa na preparação.
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -133,17 +133,17 @@ export default function PlanPage() {
             disabled={!profile}
             title={!profile ? "Crie seu perfil primeiro para gerar uma semana automática" : undefined}
           >
-            Gerar semana
+            Planejar Conquista
           </Button>
           <Button variant="danger" onClick={clearPlan} disabled={plan.length === 0}>
-            Limpar
+            Abandonar
           </Button>
         </div>
       </div>
 
       {!profile && (
         <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up flex items-center justify-between gap-4">
-          <div className="text-sm text-muted">Crie seu perfil para desbloquear "Gerar semana" e recomendações personalizadas.</div>
+          <div className="text-sm text-muted">Forje seu guerreiro para desbloquear "Gerar semana" e recomendações personalizadas.</div>
           <Link to="/perfil" className="shrink-0 inline-flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02]">
             Criar perfil
           </Link>

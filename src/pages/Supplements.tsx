@@ -38,8 +38,8 @@ export default function SupplementsPage() {
   return (
     <div className="grid gap-6">
       <div>
-        <div className="font-display text-2xl tracking-tight text-fg">Suplementos</div>
-        <div className="mt-1 text-sm text-muted">Guia rápido e combinações comuns (MVP, sem prescrição).</div>
+        <div className="font-display text-2xl tracking-tight text-fg">Poções do Guerreiro</div>
+        <div className="mt-1 text-sm text-muted">Poções mágicas para fortalecer o guerreiro. Use com sabedoria — sem prescrição médica.</div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
