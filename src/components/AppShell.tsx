@@ -28,7 +28,7 @@ function Brand() {
       <img
         src="/nutricao-inteligente/logo.png"
         alt="LeifNutri"
-        className="h-10 w-10 rounded-xl object-cover shadow-crisp ring-1 ring-accent/30"
+        className="h-10 w-10 rounded-full object-cover shadow-crisp ring-2 ring-accent/40"
         loading="eager"
       />
       <div className="leading-none">
