@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route } from "react-router-dom";
 
 import { AppShell } from "@/components/AppShell";
 import { ReminderBanner } from "@/components/ReminderBanner";
+import { SyncManager } from "@/components/SyncManager";
 import { useAppStore } from "@/store/useAppStore";
 
 const RootRedirect = React.lazy(() => import("@/pages/RootRedirect"));
@@ -18,6 +19,7 @@ const ShoppingPage = React.lazy(() => import("@/pages/Shopping"));
 const InsightsPage = React.lazy(() => import("@/pages/Insights"));
 const SettingsPage = React.lazy(() => import("@/pages/Settings"));
 const AboutPage = React.lazy(() => import("@/pages/About"));
+const ResetPasswordPage = React.lazy(() => import("@/pages/ResetPassword"));
 
 function RouteFallback() {
   return (
@@ -50,6 +52,7 @@ export default function App() {
   return (
     <>
       <AccessibilitySync />
+      <SyncManager />
       <Router>
         <React.Suspense fallback={<RouteFallback />}>
           <Routes>
@@ -67,6 +70,7 @@ export default function App() {
               <Route path="/compras" element={<ShoppingPage />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
+              <Route path="/reset-senha" element={<ResetPasswordPage />} />
             </Route>
           </Routes>
         </React.Suspense>

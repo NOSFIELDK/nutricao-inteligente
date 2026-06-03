@@ -147,3 +147,24 @@ export type Recommendation = {
   score: number;
   reasons: RecommendationReason[];
 };
+
+export type MoodScore = 1 | 2 | 3 | 4 | 5;
+
+export type DailyCheckIn = {
+  dateISO: string;
+  sleepHours: number | null;
+  mood: MoodScore | null;
+  hunger: MoodScore | null;
+  training: boolean;
+  notes: string;
+};
+
+export type LabelScan = {
+  id: string;
+  dateISO: string;
+  product: string;
+  serving: string;
+  caloriesKcal: number | null;
+  sugarG: number;
+  sodiumMg: number;
+};

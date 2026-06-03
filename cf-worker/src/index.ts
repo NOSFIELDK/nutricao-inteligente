@@ -8,6 +8,11 @@ type Env = {
   MEALDB_BASE?: string;
   FDC_BASE?: string;
   CORS_ORIGINS?: string;
+  APP_ORIGIN?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
 };
 
 type Macros = {
@@ -427,6 +432,34 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function appOrigin(env: Env, req: Request) {
+  const raw = (env.APP_ORIGIN ?? "").trim().replace(/\/+$/g, "");
+  if (raw) return raw;
+  const fromOrigin = (req.headers.get("origin") ?? "").trim().replace(/\/+$/g, "");
+  if (fromOrigin) return fromOrigin;
+  const url = new URL(req.url);
+  return url.origin;
+}
+
+async function sendEmail(env: Env, params: { to: string; subject: string; html: string; text: string }) {
+  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) return false;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: env.EMAIL_FROM,
+      to: [params.to],
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+    }),
+  });
+  return res.ok;
+}
+
 function toHex(bytes: ArrayBuffer | Uint8Array) {
   const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   return Array.from(view)
@@ -509,7 +542,7 @@ async function handleRegister(req: Request, env: Env) {
   const body = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
   const email = normalizeEmail(body?.email ?? "");
   const password = body?.password ?? "";
-  if (!email || !password || password.length < 8) return badRequest("email/password inválidos (senha min 8).");
+  if (!email || !password || password.length < 8) return badRequest("email/password inválidos (senha min 8).", req, env);
 
   const ip = clientIp(req);
   if (ip && !(await rateLimit(env, `register:ip:${ip}`, 12, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
@@ -522,8 +555,8 @@ async function handleRegister(req: Request, env: Env) {
   const { hashHex, saltHex, iterations } = await hashPassword(password);
   const now = new Date().toISOString();
 
-  await env.DB.prepare("INSERT INTO users (id, email, pw_hash, pw_salt, pw_iter, created_at) VALUES (?,?,?,?,?,?)")
-    .bind(userId, email, hashHex, saltHex, iterations, now)
+  await env.DB.prepare("INSERT INTO users (id, email, pw_hash, pw_salt, pw_iter, created_at, email_verified) VALUES (?,?,?,?,?,?,?)")
+    .bind(userId, email, hashHex, saltHex, iterations, now, 0)
     .run();
 
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
@@ -533,6 +566,20 @@ async function handleRegister(req: Request, env: Env) {
     .bind(token, userId, expiresAt)
     .run();
 
+  const verifyToken = randomTokenHex(16);
+  const verifyExp = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+  await env.DB.prepare("INSERT INTO email_verifications (token, user_id, expires_at) VALUES (?,?,?)")
+    .bind(verifyToken, userId, verifyExp)
+    .run();
+  const base = appOrigin(env, req);
+  const verifyUrl = `${new URL(req.url).origin}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}&returnTo=${encodeURIComponent(`${base}/#/configuracoes`)}`;
+  sendEmail(env, {
+    to: email,
+    subject: "Confirme seu email — Nutrição Inteligente",
+    text: `Confirme seu email: ${verifyUrl}`,
+    html: `<p>Confirme seu email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+  }).catch(() => {});
+
   return json({ ok: true, token, expiresAt }, undefined, req, env);
 }
 
@@ -541,16 +588,19 @@ async function handleLogin(req: Request, env: Env) {
   const body = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
   const email = normalizeEmail(body?.email ?? "");
   const password = body?.password ?? "";
-  if (!email || !password) return badRequest("missing email/password");
+  if (!email || !password) return badRequest("missing email/password", req, env);
 
   const ip = clientIp(req);
   if (ip && !(await rateLimit(env, `login:ip:${ip}`, 20, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
   if (!(await rateLimit(env, `login:email:${email}`, 10, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
 
-  const user = await env.DB.prepare("SELECT id, pw_hash as hashHex, pw_salt as saltHex, pw_iter as iterations FROM users WHERE email = ?")
+  const user = await env.DB.prepare(
+    "SELECT id, pw_hash as hashHex, pw_salt as saltHex, pw_iter as iterations, email_verified as emailVerified FROM users WHERE email = ?",
+  )
     .bind(email)
-    .first<{ id: string; hashHex: string; saltHex: string; iterations: number }>();
+    .first<{ id: string; hashHex: string; saltHex: string; iterations: number; emailVerified: number }>();
   if (!user?.id) return unauthorized("invalid_credentials", req, env);
+  if (!user.emailVerified) return unauthorized("email_not_verified", req, env);
 
   const derived = await hashPassword(password, { saltHex: user.saltHex, iterations: user.iterations });
   if (derived.hashHex !== user.hashHex) return unauthorized("invalid_credentials", req, env);
@@ -571,6 +621,184 @@ async function handleMe(req: Request, env: Env) {
   if (!s.ok) return s.res;
   const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(s.userId).first<{ email: string }>();
   return json({ ok: true, email: user?.email ?? "" }, undefined, req, env);
+}
+
+async function handleVerifyEmail(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured", req, env);
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token")?.trim() ?? "";
+  const returnTo = url.searchParams.get("returnTo")?.trim() ?? "";
+  if (!token) return badRequest("missing token", req, env);
+
+  const row = await env.DB.prepare("SELECT user_id as userId, expires_at as expiresAt FROM email_verifications WHERE token = ?")
+    .bind(token)
+    .first<{ userId: string; expiresAt: string }>();
+  if (!row?.userId) return notFound(req, env);
+  const exp = Date.parse(row.expiresAt);
+  if (!Number.isFinite(exp) || exp < Date.now()) return unauthorized("token_expired", req, env);
+
+  await env.DB.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").bind(row.userId).run();
+  await env.DB.prepare("DELETE FROM email_verifications WHERE token = ?").bind(token).run();
+
+  const fallback = `${appOrigin(env, req)}/#/configuracoes?verified=1`;
+  const target = returnTo ? returnTo : fallback;
+  return Response.redirect(target, 302);
+}
+
+async function handleRequestReset(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured", req, env);
+  const body = (await req.json().catch(() => null)) as { email?: string } | null;
+  const email = normalizeEmail(body?.email ?? "");
+  if (!email) return badRequest("missing email", req, env);
+
+  const ip = clientIp(req);
+  if (ip && !(await rateLimit(env, `reset:ip:${ip}`, 12, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+  if (!(await rateLimit(env, `reset:email:${email}`, 6, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+
+  const user = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: string }>();
+  if (user?.id) {
+    const token = randomTokenHex(16);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 30).toISOString();
+    await env.DB.prepare("INSERT INTO password_resets (token, user_id, expires_at) VALUES (?,?,?)")
+      .bind(token, user.id, expiresAt)
+      .run();
+    const base = appOrigin(env, req);
+    const resetUrl = `${base}/#/reset-senha?token=${encodeURIComponent(token)}`;
+    sendEmail(env, {
+      to: email,
+      subject: "Redefinição de senha — Nutrição Inteligente",
+      text: `Redefina sua senha: ${resetUrl}`,
+      html: `<p>Redefina sua senha:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+    }).catch(() => {});
+  }
+
+  return json({ ok: true }, undefined, req, env);
+}
+
+async function handleResetPassword(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured", req, env);
+  const body = (await req.json().catch(() => null)) as { token?: string; newPassword?: string } | null;
+  const token = body?.token?.trim() ?? "";
+  const newPassword = body?.newPassword ?? "";
+  if (!token || !newPassword || newPassword.length < 8) return badRequest("invalid token/password", req, env);
+
+  const row = await env.DB.prepare("SELECT user_id as userId, expires_at as expiresAt FROM password_resets WHERE token = ?")
+    .bind(token)
+    .first<{ userId: string; expiresAt: string }>();
+  if (!row?.userId) return notFound(req, env);
+  const exp = Date.parse(row.expiresAt);
+  if (!Number.isFinite(exp) || exp < Date.now()) return unauthorized("token_expired", req, env);
+
+  const { hashHex, saltHex, iterations } = await hashPassword(newPassword);
+  await env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, pw_iter = ?, email_verified = 1 WHERE id = ?")
+    .bind(hashHex, saltHex, iterations, row.userId)
+    .run();
+  await env.DB.prepare("DELETE FROM password_resets WHERE token = ?").bind(token).run();
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(row.userId).run();
+  return json({ ok: true }, undefined, req, env);
+}
+
+async function handleGoogleStart(req: Request, env: Env) {
+  const url = new URL(req.url);
+  const returnTo = url.searchParams.get("returnTo")?.trim() ?? `${appOrigin(env, req)}/#/configuracoes`;
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return internalError("google_not_configured", req, env);
+
+  const state = randomTokenHex(16);
+  await env.NUTRI_KV.put(`oauth:state:${state}`, JSON.stringify({ returnTo }), { expirationTtl: 600 });
+
+  const redirectUri = `${url.origin}/api/auth/google/callback`;
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authUrl.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", "openid email profile");
+  authUrl.searchParams.set("state", state);
+  authUrl.searchParams.set("prompt", "select_account");
+  return Response.redirect(authUrl.toString(), 302);
+}
+
+async function handleGoogleCallback(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured", req, env);
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return internalError("google_not_configured", req, env);
+  const url = new URL(req.url);
+  const code = url.searchParams.get("code") ?? "";
+  const state = url.searchParams.get("state") ?? "";
+  if (!code || !state) return badRequest("missing code/state", req, env);
+
+  const stateRaw = await env.NUTRI_KV.get(`oauth:state:${state}`);
+  await env.NUTRI_KV.delete(`oauth:state:${state}`);
+  const returnTo = (() => {
+    try {
+      const parsed = JSON.parse(stateRaw ?? "{}") as { returnTo?: string };
+      return parsed.returnTo ?? `${appOrigin(env, req)}/#/configuracoes`;
+    } catch {
+      return `${appOrigin(env, req)}/#/configuracoes`;
+    }
+  })();
+
+  const redirectUri = `${url.origin}/api/auth/google/callback`;
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    }).toString(),
+  });
+  if (!tokenRes.ok) return unauthorized("oauth_failed", req, env);
+  const tokenData = (await tokenRes.json()) as { access_token?: string };
+  if (!tokenData.access_token) return unauthorized("oauth_failed", req, env);
+
+  const userRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { authorization: `Bearer ${tokenData.access_token}` },
+  });
+  if (!userRes.ok) return unauthorized("oauth_failed", req, env);
+  const userInfo = (await userRes.json()) as { sub?: string; email?: string; email_verified?: boolean };
+  const email = normalizeEmail(userInfo.email ?? "");
+  const sub = userInfo.sub ?? "";
+  if (!email || !sub) return unauthorized("oauth_failed", req, env);
+
+  let user = await env.DB.prepare("SELECT id, oauth_sub as oauthSub FROM users WHERE email = ?")
+    .bind(email)
+    .first<{ id: string; oauthSub: string | null }>();
+
+  if (!user?.id) {
+    const userId = randomTokenHex(16);
+    const now = new Date().toISOString();
+    const pw = await hashPassword(randomTokenHex(32));
+    await env.DB.prepare(
+      "INSERT INTO users (id, email, pw_hash, pw_salt, pw_iter, created_at, oauth_provider, oauth_sub, email_verified) VALUES (?,?,?,?,?,?,?,?,?)",
+    )
+      .bind(userId, email, pw.hashHex, pw.saltHex, pw.iterations, now, "google", sub, 1)
+      .run();
+    user = { id: userId, oauthSub: sub };
+  } else if (!user.oauthSub) {
+    await env.DB.prepare("UPDATE users SET oauth_provider = ?, oauth_sub = ?, email_verified = 1 WHERE id = ?")
+      .bind("google", sub, user.id)
+      .run();
+  }
+
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
+  const token = randomTokenHex(32);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+  await env.DB.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)")
+    .bind(token, user.id, expiresAt)
+    .run();
+
+  const u = new URL(returnTo);
+  if (u.hash) {
+    const hash = u.hash.slice(1);
+    const [path, qs] = hash.split("?", 2);
+    const params = new URLSearchParams(qs ?? "");
+    params.set("token", token);
+    u.hash = `${path}?${params.toString()}`;
+  } else {
+    u.searchParams.set("token", token);
+  }
+  return Response.redirect(u.toString(), 302);
 }
 
 async function handleSyncPush(req: Request, env: Env) {
@@ -607,6 +835,61 @@ async function handleSyncPull(req: Request, env: Env) {
     .first<{ data: string; updatedAt: string }>();
   if (!row?.data) return json({ ok: true, data: null, updatedAt: null }, undefined, req, env);
   return json({ ok: true, data: row.data, updatedAt: row.updatedAt }, undefined, req, env);
+}
+
+const SYNC_V2_KEYS = ["profile", "plan", "tracking", "prefs"] as const;
+type SyncV2Key = (typeof SYNC_V2_KEYS)[number];
+
+async function handleSyncV2Push(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured", req, env);
+  const s = await requireSession(req, env);
+  if (!s.ok) return s.res;
+
+  const ip = clientIp(req);
+  if (ip && !(await rateLimit(env, `sync2:ip:${ip}`, 120, 60))) return json({ error: "rate_limited" }, { status: 429 }, req, env);
+
+  const body = (await req.json().catch(() => null)) as { items?: Record<string, unknown> } | null;
+  const items = body?.items ?? null;
+  if (!items || typeof items !== "object") return badRequest("missing items", req, env);
+
+  const now = new Date().toISOString();
+  const updatedAt: Partial<Record<SyncV2Key, string>> = {};
+
+  for (const key of SYNC_V2_KEYS) {
+    if (!(key in items)) continue;
+    const payload = JSON.stringify((items as Record<string, unknown>)[key]);
+    if (payload.length > 250_000) return json({ error: "payload_too_large", key }, { status: 413 }, req, env);
+    await env.DB.prepare(
+      "INSERT INTO sync_items (user_id, key, data, updated_at) VALUES (?,?,?,?) ON CONFLICT(user_id, key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+    )
+      .bind(s.userId, key, payload, now)
+      .run();
+    updatedAt[key] = now;
+  }
+
+  return json({ ok: true, updatedAt }, undefined, req, env);
+}
+
+async function handleSyncV2Pull(req: Request, env: Env) {
+  if (!env.DB) return internalError("db_not_configured", req, env);
+  const s = await requireSession(req, env);
+  if (!s.ok) return s.res;
+
+  const res = await env.DB.prepare("SELECT key, data, updated_at as updatedAt FROM sync_items WHERE user_id = ?")
+    .bind(s.userId)
+    .all<{ key: string; data: string; updatedAt: string }>();
+
+  const items: Partial<Record<SyncV2Key, { data: unknown; updatedAt: string }>> = {};
+  for (const row of res.results ?? []) {
+    if (!SYNC_V2_KEYS.includes(row.key as SyncV2Key)) continue;
+    try {
+      items[row.key as SyncV2Key] = { data: JSON.parse(row.data) as unknown, updatedAt: row.updatedAt };
+    } catch {
+      continue;
+    }
+  }
+
+  return json({ ok: true, items }, undefined, req, env);
 }
 
 async function getOrComputeNormalizedRecipe(env: Env, meal: MealDbRecipe) {
@@ -749,6 +1032,26 @@ export default {
         if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleMe(req, env);
       }
+      if (url.pathname === "/api/auth/verify-email") {
+        if (req.method !== "GET") return methodNotAllowed(req, env);
+        return await handleVerifyEmail(req, env);
+      }
+      if (url.pathname === "/api/auth/password/request-reset") {
+        if (req.method !== "POST") return methodNotAllowed(req, env);
+        return await handleRequestReset(req, env);
+      }
+      if (url.pathname === "/api/auth/password/reset") {
+        if (req.method !== "POST") return methodNotAllowed(req, env);
+        return await handleResetPassword(req, env);
+      }
+      if (url.pathname === "/api/auth/google/start") {
+        if (req.method !== "GET") return methodNotAllowed(req, env);
+        return await handleGoogleStart(req, env);
+      }
+      if (url.pathname === "/api/auth/google/callback") {
+        if (req.method !== "GET") return methodNotAllowed(req, env);
+        return await handleGoogleCallback(req, env);
+      }
 
       if (url.pathname === "/api/sync/push") {
         if (req.method !== "POST") return methodNotAllowed(req, env);
@@ -757,6 +1060,14 @@ export default {
       if (url.pathname === "/api/sync/pull") {
         if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleSyncPull(req, env);
+      }
+      if (url.pathname === "/api/sync/v2/push") {
+        if (req.method !== "POST") return methodNotAllowed(req, env);
+        return await handleSyncV2Push(req, env);
+      }
+      if (url.pathname === "/api/sync/v2/pull") {
+        if (req.method !== "GET") return methodNotAllowed(req, env);
+        return await handleSyncV2Pull(req, env);
       }
 
       return notFound(req, env);
