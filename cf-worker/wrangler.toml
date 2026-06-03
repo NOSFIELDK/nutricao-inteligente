@@ -8,4 +8,4 @@ FDC_BASE = "https://api.nal.usda.gov/fdc/v1"
 
 [[kv_namespaces]]
 binding = "NUTRI_KV"
-id = "REPLACE_WITH_YOUR_KV_ID"
+id = "13948453571142b1b323012f0f13c341"
