@@ -258,24 +258,37 @@ async function putCachedJson(env: Env, key: string, value: unknown, ttlSeconds: 
 }
 
 async function computeRecipeMacros(env: Env, r: MealDbRecipe) {
-  const ingredients = extractIngredients(r);
-  let total: Macros = { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
+  // Skip all KV/USDA work when there's no API key — just return zeros quickly
+  if (!env.USDA_API_KEY) return { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
 
-  for (const ing of ingredients) {
-    const grams = ing.grams;
-    if (!grams || grams <= 0) continue;
-    const key = `nutrient:${normalizeKey(ing.ingredient)}`;
-    let per100 = await getCachedJson<Macros>(env, key);
-    if (!per100) {
-      per100 = (await fetchUsdaMacrosPer100g(env, ing.ingredient)) ?? { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
-      await putCachedJson(env, key, per100, 60 * 60 * 24 * 30);
-    }
-    const mult = grams / 100;
+  const ingredients = extractIngredients(r).filter((i) => i.grams > 0);
+
+  // Read all cached macros in parallel
+  const cached = await Promise.all(
+    ingredients.map((ing) => getCachedJson<Macros>(env, `nutrient:${normalizeKey(ing.ingredient)}`)),
+  );
+
+  // Fetch missing ones in parallel (USDA)
+  const resolved = await Promise.all(
+    ingredients.map(async (ing, i) => {
+      if (cached[i]) return cached[i]!;
+      const key = `nutrient:${normalizeKey(ing.ingredient)}`;
+      const fetched = (await fetchUsdaMacrosPer100g(env, ing.ingredient)) ?? { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
+      // Fire-and-forget cache write — don't block on it
+      env.NUTRI_KV.put(key, JSON.stringify(fetched), { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
+      return fetched;
+    }),
+  );
+
+  let total: Macros = { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
+  for (let i = 0; i < ingredients.length; i++) {
+    const mult = ingredients[i].grams / 100;
+    const m = resolved[i];
     total = {
-      proteinG: total.proteinG + per100.proteinG * mult,
-      carbsG: total.carbsG + per100.carbsG * mult,
-      fatG: total.fatG + per100.fatG * mult,
-      fiberG: total.fiberG + per100.fiberG * mult,
+      proteinG: total.proteinG + m.proteinG * mult,
+      carbsG: total.carbsG + m.carbsG * mult,
+      fatG: total.fatG + m.fatG * mult,
+      fiberG: total.fiberG + m.fiberG * mult,
     };
   }
 
@@ -351,16 +364,19 @@ async function handleDiscover(env: Env, seed: string, page: number, pageSize: nu
   }>(env, cacheKey);
   if (cached) return cached;
 
-  const ids = new Set<string>();
+  // Fetch random meals in parallel (ask for more than needed to handle duplicates)
+  const fetched = await Promise.allSettled(
+    Array.from({ length: pageSize + 4 }, () => fetchMealDbRandom(env)),
+  );
+
+  const seen = new Set<string>();
   const items: NormalizedRecipe[] = [];
-  for (let tries = 0; tries < pageSize * 3 && items.length < pageSize; tries += 1) {
-    const meal = await fetchMealDbRandom(env);
-    if (!meal) break;
-    if (ids.has(meal.idMeal)) continue;
-    ids.add(meal.idMeal);
-    const normalized = await getOrComputeNormalizedRecipe(env, meal);
-    items.push(normalized);
-  }
+  const meals = fetched.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
+
+  // Deduplicate then normalize in parallel
+  const unique = meals.filter((m) => { if (seen.has(m.idMeal)) return false; seen.add(m.idMeal); return true; }).slice(0, pageSize);
+  const normalized = await Promise.allSettled(unique.map((m) => getOrComputeNormalizedRecipe(env, m)));
+  for (const r of normalized) { if (r.status === "fulfilled") items.push(r.value); }
 
   const payload = {
     source: "themealdb",
@@ -371,7 +387,8 @@ async function handleDiscover(env: Env, seed: string, page: number, pageSize: nu
     total: 1000000,
     items,
   };
-  await putCachedJson(env, cacheKey, payload, 60 * 60 * 24 * 7);
+  // Fire-and-forget cache write
+  putCachedJson(env, cacheKey, payload, 60 * 60 * 24 * 7).catch(() => {});
   return payload;
 }
 
@@ -392,11 +409,9 @@ async function handleSearch(req: Request, env: Env) {
   const start = (page - 1) * pageSize;
   const slice = meals.slice(start, start + pageSize);
 
-  const items: NormalizedRecipe[] = [];
-  for (const r of slice) {
-    const normalized = await getOrComputeNormalizedRecipe(env, r);
-    items.push(normalized);
-  }
+  // Process all recipes in parallel — much faster on cold cache
+  const results = await Promise.allSettled(slice.map((r) => getOrComputeNormalizedRecipe(env, r)));
+  const items = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
 
   return json({
     source: "themealdb",
@@ -446,8 +461,12 @@ export default {
 
       return notFound();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "unknown";
-      return internalError(message);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("[worker error]", message);
+      return json(
+        { error: "internal_error", message, hint: "Retry — this is usually a cold-start timeout." },
+        { status: 500 },
+      );
     }
   },
 };
