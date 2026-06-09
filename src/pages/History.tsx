@@ -6,6 +6,7 @@ import { TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
 import { Badge } from "@/components/ui/Chip";
+import { LeifSays } from "@/components/LeifSays";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
 import type { CatalogItem, MealSlot, MoodScore, PlanItem } from "@/domain/models";
@@ -420,8 +421,16 @@ export default function HistoryPage() {
             </div>
 
             {selectedPlan.length === 0 ? (
-              <div className="mt-3 text-sm text-muted">
-                Sem itens no plano para este dia. Adicione no <Link to="/plano" className="text-fg underline">Plano</Link>.
+              <div className="mt-4 grid gap-3">
+                <LeifSays
+                  mood="normal"
+                  message="Sem itens no plano para este dia. Monte sua conquista no Plano para registrar o consumo aqui."
+                />
+                <div>
+                  <Link to="/plano" className="text-sm font-medium text-accent hover:underline">
+                    Ir para o Plano →
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="mt-4 grid gap-3">

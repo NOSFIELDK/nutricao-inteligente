@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { TextField } from "@/components/ui/TextField";
 import { hasRemoteApi, searchRemoteRecipes } from "@/api/recipesApi";
+import { LeifEmptyState } from "@/components/LeifSays";
 import { recipes } from "@/data/catalog";
 import type { CatalogTag, Recipe } from "@/domain/models";
 import { useAppStore } from "@/store/useAppStore";
@@ -144,6 +145,18 @@ export default function RecipesPage() {
 
       {error ? (
         <div className="rounded-2xl bg-card/80 p-4 text-sm text-red-500 ring-1 ring-border shadow-crisp">{error}</div>
+      ) : null}
+
+      {!loading && !error && list.length === 0 ? (
+        <LeifEmptyState
+          mood="warn"
+          title="Nenhum festim encontrado"
+          message={
+            q.trim()
+              ? `Não encontrei receitas para "${q.trim()}". Tente outro ingrediente ou filtro, guerreiro.`
+              : "Nenhuma receita disponível agora. Volte em breve para o próximo banquete."
+          }
+        />
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

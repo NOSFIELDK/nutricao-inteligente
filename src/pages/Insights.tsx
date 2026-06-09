@@ -2,6 +2,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/Chip";
+import { LeifSays } from "@/components/LeifSays";
 import { catalog } from "@/data/catalog";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
@@ -62,6 +63,15 @@ export default function InsightsPage() {
           </Link>
         ) : null}
       </div>
+
+      {!profile ? (
+        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp animate-fade-up">
+          <LeifSays
+            mood="motivate"
+            message="As runas só falam para quem tem um perfil forjado. Crie o seu para revelar os segredos nutricionais do dia."
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-4">
         {(

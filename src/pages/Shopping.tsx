@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { LeifSays } from "@/components/LeifSays";
 import { catalog } from "@/data/catalog";
 import { buildShoppingList } from "@/domain/nutrition/shopping";
 import { useAppStore } from "@/store/useAppStore";
@@ -66,8 +67,11 @@ export default function ShoppingPage() {
         </div>
         <div className="grid gap-2 p-4">
           {list.length === 0 ? (
-            <div className="rounded-xl bg-card-2/50 p-4 text-sm text-muted ring-1 ring-border">
-              O armazém está vazio, guerreiro. Adicione receitas ao Plano de Conquista para gerar seu saque.
+            <div className="rounded-xl bg-card-2/40 p-4 ring-1 ring-border">
+              <LeifSays
+                mood="normal"
+                message="O armazém está vazio, guerreiro. Adicione receitas ao Plano de Conquista para que eu monte seu saque."
+              />
             </div>
           ) : (
             list.map((i, idx) => {

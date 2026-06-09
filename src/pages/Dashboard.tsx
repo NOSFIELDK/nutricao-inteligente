@@ -6,6 +6,7 @@ import { RecommendationCard } from "@/components/RecommendationCard";
 import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { LeifSays } from "@/components/LeifSays";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -200,19 +201,17 @@ export default function DashboardPage() {
 
       {!profile ? (
         <Card className="animate-fade-up">
-          <CardHeader>
-            <CardTitle>Comece pelo seu perfil</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="text-sm text-muted">
-              Para personalizar metas, recomendações e alertas, preencha idade, peso, objetivo e restrições.
-            </div>
+          <CardContent className="grid gap-4 pt-5">
+            <LeifSays
+              mood="motivate"
+              message="Saudações, guerreiro! Antes da batalha, forje seu perfil — assim eu calculo suas metas, recomendações e alertas sob medida."
+            />
             <div className="flex flex-wrap gap-2">
               <Link
                 to="/perfil"
                 className="inline-flex h-10 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-fg shadow-crisp transition hover:brightness-[1.02] active:translate-y-px active:shadow-none"
               >
-                Preencher perfil
+                ⚔️ Forjar guerreiro
               </Link>
             </div>
           </CardContent>
