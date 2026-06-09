@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export type LeifMood = "normal" | "motivate" | "warn" | "celebrate";
+export type LeifMood = "normal" | "motivate" | "warn" | "celebrate" | "sad" | "sleep";
 type LeifMascotVariant = "avatar" | "full";
 type LeifMascotStyle = "crafted" | "blocky";
 
@@ -256,6 +256,34 @@ function Eyes({ mood, animated }: { mood: LeifMood; animated?: boolean }) {
     );
   }
 
+  if (mood === "sleep") {
+    return (
+      <g>
+        {/* olhos fechados (curvas suaves para baixo) */}
+        <path d={`M ${lx - 6} ${ey} q 6 5 12 0`} fill="none" stroke={C.ink} strokeWidth={3.5} />
+        <path d={`M ${rx - 6} ${ey} q 6 5 12 0`} fill="none" stroke={C.ink} strokeWidth={3.5} />
+        {/* sobrancelhas relaxadas */}
+        <path d={`M ${lx - 9} ${ey - 11} C ${lx - 3} ${ey - 12}, ${lx + 4} ${ey - 12}, ${lx + 9} ${ey - 11}`} fill="none" stroke={C.inkSoft} strokeWidth={3} />
+        <path d={`M ${rx - 9} ${ey - 11} C ${rx - 4} ${ey - 12}, ${rx + 3} ${ey - 12}, ${rx + 9} ${ey - 11}`} fill="none" stroke={C.inkSoft} strokeWidth={3} />
+      </g>
+    );
+  }
+
+  if (mood === "sad") {
+    return (
+      <g>
+        {/* olhos menores olhando para baixo */}
+        <ellipse cx={lx} cy={ey + 1} rx={3.2} ry={3.6} fill={C.ink} stroke="none" />
+        <ellipse cx={rx} cy={ey + 1} rx={3.2} ry={3.6} fill={C.ink} stroke="none" />
+        <circle cx={lx - 0.8} cy={ey + 2} r={1} fill={C.white} stroke="none" />
+        <circle cx={rx - 0.8} cy={ey + 2} r={1} fill={C.white} stroke="none" />
+        {/* sobrancelhas tristes (interno erguido) */}
+        <path d={`M ${lx - 9} ${ey - 9} L ${lx + 8} ${ey - 14}`} fill="none" stroke={C.inkSoft} strokeWidth={3} />
+        <path d={`M ${rx + 9} ${ey - 9} L ${rx - 8} ${ey - 14}`} fill="none" stroke={C.inkSoft} strokeWidth={3} />
+      </g>
+    );
+  }
+
   // Geometria de olhos abertos por humor
   const eye = { rx: 3.6, ry: 4.4 };
   if (mood === "motivate") {
@@ -323,6 +351,16 @@ function MoodFx({ id, mood }: { id: (s: string) => string; mood: LeifMood }) {
     return (
       <g stroke={C.gold} strokeWidth={3} strokeLinecap="round">
         <path d="M 198 78 l 10 -8 M 202 92 l 12 -2 M 196 64 l 8 -10" fill="none" />
+      </g>
+    );
+  }
+  if (mood === "sleep") {
+    // zZz
+    return (
+      <g fill={C.inkSoft} stroke="none" fontFamily="serif" fontWeight={700}>
+        <text x={168} y={96} fontSize={14}>z</text>
+        <text x={180} y={80} fontSize={18}>Z</text>
+        <text x={196} y={62} fontSize={24}>Z</text>
       </g>
     );
   }

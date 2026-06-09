@@ -7,6 +7,7 @@ import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeifSays } from "@/components/LeifSays";
+import { leifGreeting } from "@/utils/leifGreeting";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -116,6 +117,10 @@ export default function DashboardPage() {
   }, [consumedTodayPlan, manualByDate, mergedCatalog, today]);
   const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
   const waterMl = waterByDate[today] ?? 0;
+  const greeting = React.useMemo(
+    () => leifGreeting({ hour: new Date().getHours(), adherence: dayPlan.length ? dayPlan.filter((p) => consumedPlan[p.id]).length / dayPlan.length : 0, plannedItems: dayPlan.length }),
+    [consumedPlan, dayPlan],
+  );
   const adherenceToday = React.useMemo(() => {
     const planned = dayPlan.length;
     if (planned === 0) return 0;
@@ -227,7 +232,13 @@ export default function DashboardPage() {
                 />
               </CardContent>
             </Card>
-          ) : null}
+          ) : (
+            <Card className="animate-fade-up">
+              <CardContent className="pt-5">
+                <LeifSays mood={greeting.mood} message={greeting.message} />
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
             <div className="grid gap-6">
