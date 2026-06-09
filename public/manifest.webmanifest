@@ -1,0 +1,26 @@
+{
+  "name": "LeifNutri",
+  "short_name": "LeifNutri",
+  "description": "Receitas, alimentos e suplementos com plano semanal, lista de compras e insights de nutrição — guiado pelo Leif.",
+  "lang": "pt-BR",
+  "start_url": "/nutricao-inteligente/",
+  "scope": "/nutricao-inteligente/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1116",
+  "theme_color": "#3C6E47",
+  "icons": [
+    {
+      "src": "/nutricao-inteligente/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/nutricao-inteligente/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
