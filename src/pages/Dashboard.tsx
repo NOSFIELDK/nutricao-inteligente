@@ -218,6 +218,17 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <>
+          {adherenceToday >= 1 && dayPlan.length > 0 ? (
+            <Card className="animate-fade-up ring-gold/30">
+              <CardContent className="pt-5">
+                <LeifSays
+                  mood="celebrate"
+                  message="Conquista do dia completa! Você consumiu tudo que planejou. Festeje como um verdadeiro guerreiro! 🎉"
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+
           <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
             <div className="grid gap-6">
               <Card className="animate-fade-up">
