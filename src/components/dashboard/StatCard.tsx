@@ -24,6 +24,7 @@ export function StatCard({
   trend,
   tone = "accent",
   className,
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -33,6 +34,7 @@ export function StatCard({
   trend?: Array<number | null | undefined>;
   tone?: "accent" | "accent-2" | "gold" | "viking-blue";
   className?: string;
+  onClick?: () => void;
 }) {
   const toneClasses =
     tone === "accent"
@@ -43,15 +45,30 @@ export function StatCard({
           ? { stroke: "stroke-gold", fill: "fill-gold/14", dot: "fill-gold", icon: "text-gold" }
           : { stroke: "stroke-viking-blue", fill: "fill-viking-blue/14", dot: "fill-viking-blue", icon: "text-viking-blue" };
 
+  const Comp = onClick ? "button" : "div";
+  const compProps = onClick ? { type: "button" as const, onClick } : {};
+
   return (
-    <div className={cn("hover-lift ring-hover rounded-2xl bg-card-2/35 p-4 ring-1 ring-border shadow-crisp", className)}>
+    <Comp
+      {...compProps}
+      className={cn(
+        "group relative rounded-2xl bg-card-2/35 p-4 text-left ring-1 ring-border shadow-crisp transition hover:bg-card-2/55 hover:ring-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
+        onClick && "cursor-pointer",
+        className,
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted">{title}</div>
           <div className="mt-1 truncate text-xl font-semibold tracking-tight text-fg">{value}</div>
           {subtitle ? <div className="mt-1 text-xs text-muted">{subtitle}</div> : null}
         </div>
-        <div className={cn("mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-card/60 ring-1 ring-border", toneClasses.icon)}>
+        <div
+          className={cn(
+            "mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-card/60 ring-1 ring-border transition group-hover:bg-card",
+            toneClasses.icon,
+          )}
+        >
           {icon}
         </div>
       </div>
@@ -68,7 +85,7 @@ export function StatCard({
           <Sparkline data={trend} strokeClassName={toneClasses.stroke} fillClassName={toneClasses.fill} dotClassName={toneClasses.dot} />
         </div>
       ) : null}
-    </div>
+    </Comp>
   );
 }
 

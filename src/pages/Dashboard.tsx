@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { CalendarCheck, Droplet, Flame, RefreshCcw, Settings2, Sparkles, Target, User2 } from "lucide-react";
+import { Award, CalendarCheck, CheckCircle2, Circle, Droplet, Flame, RefreshCcw, Settings2, Sparkles, Target, User2 } from "lucide-react";
 
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { BarChart } from "@/components/charts/BarChart";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
-import { SelectField } from "@/components/ui/TextField";
+import { SelectField, TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildDailySeries } from "@/domain/nutrition/series";
@@ -24,6 +24,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
 
 type Tab = "saude" | "doencas" | "performance";
+type Metric = "calories" | "adherence" | "protein" | "water";
 
 function tabLabel(tab: Tab) {
   if (tab === "saude") return "Saúde geral";
@@ -69,6 +70,9 @@ export default function DashboardPage() {
   const syncDirty = useAppStore((s) => s.syncDirty);
   const syncLastSyncedAt = useAppStore((s) => s.syncLastSyncedAt);
   const addWater = useAppStore((s) => s.addWater);
+  const setWater = useAppStore((s) => s.setWater);
+  const setWeight = useAppStore((s) => s.setWeight);
+  const addManualEntry = useAppStore((s) => s.addManualEntry);
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const isFavorite = useAppStore((s) => s.isFavorite);
   const addToPlan = useAppStore((s) => s.addToPlan);
@@ -79,6 +83,21 @@ export default function DashboardPage() {
   const [mealSlot, setMealSlot] = React.useState<MealSlot>("almoco");
   const [periodDays, setPeriodDays] = React.useState<7 | 30>(7);
   const [hasAuthToken, setHasAuthToken] = React.useState<boolean>(() => Boolean(localStorage.getItem(STORAGE_KEYS.authToken)));
+  const [metric, setMetricOpen] = React.useState<Metric | null>(null);
+  const [openInsightId, setOpenInsightId] = React.useState<string | null>(null);
+
+  const [manualOpen, setManualOpen] = React.useState(false);
+  const [manualTitle, setManualTitle] = React.useState("");
+  const [manualProtein, setManualProtein] = React.useState("");
+  const [manualCarbs, setManualCarbs] = React.useState("");
+  const [manualFat, setManualFat] = React.useState("");
+  const [manualFiber, setManualFiber] = React.useState("");
+
+  const [weightOpen, setWeightOpen] = React.useState(false);
+  const [weightInput, setWeightInput] = React.useState("");
+
+  const [waterOpen, setWaterOpen] = React.useState(false);
+  const [waterInput, setWaterInput] = React.useState("");
 
   const recommendations: Recommendation[] = React.useMemo(() => {
     if (!profile) return [];
@@ -150,6 +169,99 @@ export default function DashboardPage() {
   const labelScansToday = labelScansByDate[today] ?? [];
   const checkInComplete = Boolean(checkInToday && checkInToday.sleepHours != null && checkInToday.mood != null && checkInToday.hunger != null);
 
+  const checklistToday = React.useMemo(() => {
+    const waterOk = targets.waterMl > 0 ? waterMl >= targets.waterMl * 0.9 : false;
+    const proteinOk = targets.proteinG > 0 ? todayMacros.proteinG >= targets.proteinG * 0.9 : false;
+    const fiberOk = targets.fiberG > 0 ? todayMacros.fiberG >= targets.fiberG * 0.9 : false;
+    const checkInOk = checkInComplete;
+    const weightOk = weightByDate[today] != null;
+
+    const items = [
+      {
+        id: "water" as const,
+        label: "Água",
+        detail: `${Math.round(waterMl / 250) * 250} / ${targets.waterMl} ml`,
+        done: waterOk,
+        onClick: () => setMetricOpen("water"),
+      },
+      {
+        id: "protein" as const,
+        label: "Proteína",
+        detail: `${todayMacros.proteinG} / ${targets.proteinG} g`,
+        done: proteinOk,
+        onClick: () => setMetricOpen("protein"),
+      },
+      {
+        id: "fiber" as const,
+        label: "Fibras",
+        detail: `${todayMacros.fiberG} / ${targets.fiberG} g`,
+        done: fiberOk,
+        onClick: () => setMetricOpen("calories"),
+      },
+      {
+        id: "checkin" as const,
+        label: "Check-in",
+        detail: checkInOk ? "completo" : "pendente",
+        done: checkInOk,
+        onClick: () => window.location.assign(`${import.meta.env.BASE_URL}historico`),
+      },
+      {
+        id: "weight" as const,
+        label: "Peso",
+        detail: weightByDate[today] != null ? `${weightByDate[today]} kg` : "não registrado",
+        done: weightOk,
+        onClick: () => {
+          const v = weightByDate[today];
+          setWeightInput(v != null ? String(v) : "");
+          setWeightOpen(true);
+        },
+      },
+    ];
+
+    const doneCount = items.filter((i) => i.done).length;
+    return { items, doneCount, total: items.length };
+  }, [checkInComplete, setMetricOpen, targets.fiberG, targets.proteinG, targets.waterMl, today, todayMacros.fiberG, todayMacros.proteinG, waterMl, weightByDate]);
+
+  const weekSummary = React.useMemo(() => {
+    const dates = last7.map((p) => p.dateISO);
+
+    const byISO = new Map(series.map((p) => [p.dateISO, p]));
+
+    const completion = dates.map((dateISO) => {
+      const p = byISO.get(dateISO);
+      const waterOk = targets.waterMl > 0 ? (p?.waterMl ?? 0) >= targets.waterMl * 0.9 : false;
+      const proteinOk = targets.proteinG > 0 ? (p?.proteinG ?? 0) >= targets.proteinG * 0.9 : false;
+      const fiberOk = targets.fiberG > 0 ? (p?.fiberG ?? 0) >= targets.fiberG * 0.9 : false;
+      const c = checkInByDate[dateISO];
+      const checkInOk = Boolean(c && c.sleepHours != null && c.mood != null && c.hunger != null);
+      const weightOk = weightByDate[dateISO] != null;
+      const doneCount = [waterOk, proteinOk, fiberOk, checkInOk, weightOk].filter(Boolean).length;
+      const isPerfect = doneCount === 5;
+      return { dateISO, doneCount, isPerfect };
+    });
+
+    const currentStreak = (() => {
+      let streak = 0;
+      for (let i = 0; i < 365; i++) {
+        const dateISO = addDaysISO(today, -i);
+        const p = byISO.get(dateISO);
+        const waterOk = targets.waterMl > 0 ? (p?.waterMl ?? 0) >= targets.waterMl * 0.9 : false;
+        const proteinOk = targets.proteinG > 0 ? (p?.proteinG ?? 0) >= targets.proteinG * 0.9 : false;
+        const fiberOk = targets.fiberG > 0 ? (p?.fiberG ?? 0) >= targets.fiberG * 0.9 : false;
+        const c = checkInByDate[dateISO];
+        const checkInOk = Boolean(c && c.sleepHours != null && c.mood != null && c.hunger != null);
+        const weightOk = weightByDate[dateISO] != null;
+        const ok = waterOk && proteinOk && fiberOk && checkInOk && weightOk;
+        if (!ok) break;
+        streak++;
+      }
+      return streak;
+    })();
+
+    const perfectDays = completion.filter((d) => d.isPerfect).length;
+    return { completion, currentStreak, perfectDays };
+  }, [addDaysISO, checkInByDate, last7, series, targets.fiberG, targets.proteinG, targets.waterMl, today, weightByDate]);
+
   const insightsToday = React.useMemo(() => {
     return buildInsights({ profile, catalog: mergedCatalog, plan: dayPlan, dateISO: today, targetsOverride: customTargets ?? null }).slice(0, 3);
   }, [customTargets, dayPlan, mergedCatalog, profile, today]);
@@ -177,6 +289,60 @@ export default function DashboardPage() {
     if (!selected) return;
     addToPlan({ item: selected, dateISO, mealSlot, servings: 1 });
     setSelected(null);
+  };
+
+  const openManual = () => {
+    setManualTitle("");
+    setManualProtein("");
+    setManualCarbs("");
+    setManualFat("");
+    setManualFiber("");
+    setManualOpen(true);
+  };
+
+  const commitManual = () => {
+    const title = manualTitle.trim();
+    if (!title) return;
+    addManualEntry({
+      dateISO: today,
+      title,
+      proteinG: Number(manualProtein) || 0,
+      carbsG: Number(manualCarbs) || 0,
+      fatG: Number(manualFat) || 0,
+      fiberG: Number(manualFiber) || 0,
+    });
+    setManualOpen(false);
+  };
+
+  const openWeight = () => {
+    const v = weightByDate[today];
+    setWeightInput(v != null ? String(v) : "");
+    setWeightOpen(true);
+  };
+
+  const commitWeight = () => {
+    const raw = weightInput.trim();
+    if (!raw) {
+      setWeight(today, null);
+      setWeightOpen(false);
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    setWeight(today, n);
+    setWeightOpen(false);
+  };
+
+  const openWater = () => {
+    setWaterInput(String(waterMl));
+    setWaterOpen(true);
+  };
+
+  const commitWater = () => {
+    const n = Number(waterInput);
+    if (!Number.isFinite(n)) return;
+    setWater(today, n);
+    setWaterOpen(false);
   };
 
   return (
@@ -273,6 +439,7 @@ export default function DashboardPage() {
                       progress={targets.caloriesKcal ? todayMacros.caloriesKcal / targets.caloriesKcal : undefined}
                       trend={last7.map((p) => p.caloriesKcal)}
                       tone="accent-2"
+                    onClick={() => setMetricOpen("calories")}
                     />
                     <StatCard
                       icon={<Target className="h-4 w-4" />}
@@ -282,6 +449,7 @@ export default function DashboardPage() {
                       progress={adherenceToday}
                       trend={last7.map((p) => Math.round(p.adherence * 100))}
                       tone="viking-blue"
+                    onClick={() => setMetricOpen("adherence")}
                     />
                     <StatCard
                       icon={<Sparkles className="h-4 w-4" />}
@@ -291,6 +459,7 @@ export default function DashboardPage() {
                       progress={targets.proteinG > 0 ? todayMacros.proteinG / targets.proteinG : 0}
                       trend={last7.map((p) => p.proteinG)}
                       tone="accent"
+                    onClick={() => setMetricOpen("protein")}
                     />
                     <StatCard
                       icon={<Droplet className="h-4 w-4" />}
@@ -300,6 +469,7 @@ export default function DashboardPage() {
                       progress={targets.waterMl > 0 ? waterMl / targets.waterMl : 0}
                       trend={last7.map((p) => p.waterMl)}
                       tone="gold"
+                    onClick={() => setMetricOpen("water")}
                     />
                   </div>
 
@@ -449,11 +619,104 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-6">
+              <Card className="animate-fade-up" style={{ animationDelay: "20ms" } as React.CSSProperties}>
+                <CardHeader className="flex items-center justify-between">
+                  <CardTitle>Checklist de hoje</CardTitle>
+                  <div className="text-xs font-medium text-muted tabular-nums">{checklistToday.doneCount}/{checklistToday.total}</div>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  <div className="grid gap-2 rounded-2xl bg-card-2/35 p-4 ring-1 ring-border">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-medium text-fg/90">Progresso</div>
+                      <div className="flex items-center gap-2">
+                        <Award className="h-4 w-4 text-gold" />
+                        <div className="text-xs font-medium text-fg tabular-nums">
+                          streak {weekSummary.currentStreak}d
+                        </div>
+                      </div>
+                    </div>
+                    <ProgressBar value={checklistToday.total ? checklistToday.doneCount / checklistToday.total : 0} tone="accent-2" />
+                    <div className="mt-2 grid grid-cols-7 gap-1">
+                      {weekSummary.completion.map((d) => {
+                        const cls =
+                          d.doneCount >= 5
+                            ? "bg-accent"
+                            : d.doneCount >= 3
+                              ? "bg-accent-2/80"
+                              : d.doneCount >= 1
+                                ? "bg-card"
+                                : "bg-card-2";
+                        return (
+                          <div
+                            key={d.dateISO}
+                            title={`${d.dateISO} • ${d.doneCount}/5`}
+                            className={`h-2 rounded-full ring-1 ring-border ${cls}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 text-xs text-muted">
+                      Semana: {weekSummary.perfectDays}/7 dias perfeitos
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    {checklistToday.items.map((it) => (
+                      <button
+                        key={it.id}
+                        type="button"
+                        onClick={it.onClick}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl bg-card-2/35 px-4 py-3 text-left ring-1 ring-border transition hover:bg-card-2/55 hover:ring-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          {it.done ? (
+                            <CheckCircle2 className="h-5 w-5 text-accent" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-muted" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-fg">{it.label}</div>
+                            <div className="truncate text-xs text-muted">{it.detail}</div>
+                          </div>
+                        </div>
+                        <div className={it.done ? "text-xs font-medium text-accent" : "text-xs font-medium text-muted"}>
+                          {it.done ? "ok" : "fazer"}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="animate-fade-up" style={{ animationDelay: "40ms" } as React.CSSProperties}>
                 <CardHeader>
                   <CardTitle>Ações rápidas</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={openManual}
+                    className="inline-flex h-11 items-center justify-between rounded-xl bg-card-2/50 px-4 text-sm font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
+                  >
+                    <span>Adicionar consumo manual</span>
+                    <span className="text-xs text-muted">rápido</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openWeight}
+                    className="inline-flex h-11 items-center justify-between rounded-xl bg-card-2/50 px-4 text-sm font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
+                  >
+                    <span>Registrar peso</span>
+                    <span className="text-xs text-muted">{weightByDate[today] != null ? `${weightByDate[today]} kg` : "—"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openWater}
+                    className="inline-flex h-11 items-center justify-between rounded-xl bg-card-2/50 px-4 text-sm font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
+                  >
+                    <span>Ajustar água</span>
+                    <span className="text-xs text-muted">{Math.round(waterMl / 250) * 250} ml</span>
+                  </button>
                   <Link
                     to="/plano"
                     className="inline-flex h-11 items-center justify-between rounded-xl bg-card-2/50 px-4 text-sm font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
@@ -475,6 +738,56 @@ export default function DashboardPage() {
                     <span>Ver alertas</span>
                     <span className="text-xs text-muted">{insightsToday.length} hoje</span>
                   </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="animate-fade-up" style={{ animationDelay: "60ms" } as React.CSSProperties}>
+                <CardHeader className="flex items-center justify-between">
+                  <CardTitle>Alertas do dia</CardTitle>
+                  <Link to="/insights" className="text-xs font-medium text-accent hover:underline">
+                    Abrir
+                  </Link>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  {insightsToday.length === 0 ? (
+                    <div className="rounded-2xl bg-card-2/35 p-4 text-sm text-muted ring-1 ring-border">
+                      Nada crítico por aqui. Continue registrando para melhorar os alertas.
+                    </div>
+                  ) : (
+                    insightsToday.map((i) => {
+                      const level =
+                        i.level === "alto" ? "ALTO" : i.level === "medio" ? "MÉDIO" : "BAIXO";
+                      const levelClass =
+                        i.level === "alto"
+                          ? "bg-rust/15 text-rust ring-1 ring-rust/25"
+                          : i.level === "medio"
+                            ? "bg-accent-2/12 text-accent-2 ring-1 ring-accent-2/25"
+                            : "bg-accent/12 text-accent ring-1 ring-accent/25";
+                      const open = openInsightId === i.id;
+                      return (
+                        <button
+                          key={i.id}
+                          type="button"
+                          onClick={() => setOpenInsightId((prev) => (prev === i.id ? null : i.id))}
+                          className="w-full rounded-2xl bg-card-2/35 p-4 text-left ring-1 ring-border transition hover:bg-card-2/55 hover:ring-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-fg">{i.title}</div>
+                              <div className="mt-1 text-xs text-muted">{open ? i.detail : i.detail}</div>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${levelClass}`}>{level}</span>
+                          </div>
+                          {open ? (
+                            <div className="mt-3 rounded-xl bg-card/50 p-3 text-xs text-muted ring-1 ring-border">
+                              <div className="font-medium text-fg/90">Ação</div>
+                              <div className="mt-1">{i.action}</div>
+                            </div>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  )}
                 </CardContent>
               </Card>
 
@@ -554,6 +867,140 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      <Modal open={metric != null} title={metric === "calories" ? "Calorias" : metric === "protein" ? "Proteína" : metric === "water" ? "Água" : "Aderência"} onClose={() => setMetricOpen(null)}>
+        {metric ? (
+          <div className="grid gap-4">
+            {metric === "calories" ? (
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <div className="text-sm font-semibold text-fg">{todayMacros.caloriesKcal} kcal</div>
+                  {targets.caloriesKcal ? <div className="text-xs text-muted">Meta: {targets.caloriesKcal} kcal</div> : null}
+                </div>
+                <div className="grid gap-2 rounded-2xl bg-card-2/35 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Últimos {periodDays} dias</div>
+                  <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: p.caloriesKcal }))} target={targets.caloriesKcal} unit="" />
+                </div>
+                <div className="grid gap-2 rounded-2xl bg-card-2/35 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Macros (hoje)</div>
+                  <div className="grid gap-1 text-xs text-muted">
+                    <div className="flex items-center justify-between"><span>Proteína</span><span className="tabular-nums">{todayMacros.proteinG} g</span></div>
+                    <div className="flex items-center justify-between"><span>Carboidrato</span><span className="tabular-nums">{todayMacros.carbsG} g</span></div>
+                    <div className="flex items-center justify-between"><span>Gordura</span><span className="tabular-nums">{todayMacros.fatG} g</span></div>
+                    <div className="flex items-center justify-between"><span>Fibras</span><span className="tabular-nums">{todayMacros.fiberG} g</span></div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {metric === "protein" ? (
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <div className="text-sm font-semibold text-fg">{todayMacros.proteinG} g</div>
+                  <div className="text-xs text-muted">Meta: {targets.proteinG} g</div>
+                </div>
+                <div className="grid gap-2 rounded-2xl bg-card-2/35 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Últimos {periodDays} dias</div>
+                  <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: p.proteinG }))} target={targets.proteinG} unit="g" />
+                </div>
+              </div>
+            ) : null}
+
+            {metric === "water" ? (
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <div className="text-sm font-semibold text-fg">{Math.round(waterMl / 250) * 250} ml</div>
+                  <div className="text-xs text-muted">Meta: {targets.waterMl} ml</div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => addWater(today, 250)}>
+                    +250ml
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => addWater(today, 500)}>
+                    +500ml
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={openWater}>
+                    Ajustar
+                  </Button>
+                </div>
+                <div className="grid gap-2 rounded-2xl bg-card-2/35 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Últimos {periodDays} dias</div>
+                  <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: p.waterMl }))} target={targets.waterMl} unit="ml" />
+                </div>
+              </div>
+            ) : null}
+
+            {metric === "adherence" ? (
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <div className="text-sm font-semibold text-fg">{Math.round(adherenceToday * 100)}%</div>
+                  <div className="text-xs text-muted">{dayPlan.filter((p) => consumedPlan[p.id]).length} / {dayPlan.length} itens hoje</div>
+                </div>
+                <div className="grid gap-2 rounded-2xl bg-card-2/35 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Últimos {periodDays} dias</div>
+                  <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: Math.round(p.adherence * 100) }))} target={100} unit="%" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to="/plano"
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-card-2 px-4 text-sm font-medium text-fg ring-1 ring-border transition hover:bg-card"
+                  >
+                    Abrir plano
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal open={manualOpen} title="Adicionar consumo manual" onClose={() => setManualOpen(false)}>
+        <div className="grid gap-4">
+          <TextField label="Nome" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Ex.: iogurte, banana, shake" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField label="Proteína (g)" inputMode="decimal" value={manualProtein} onChange={(e) => setManualProtein(e.target.value)} />
+            <TextField label="Carboidrato (g)" inputMode="decimal" value={manualCarbs} onChange={(e) => setManualCarbs(e.target.value)} />
+            <TextField label="Gordura (g)" inputMode="decimal" value={manualFat} onChange={(e) => setManualFat(e.target.value)} />
+            <TextField label="Fibras (g)" inputMode="decimal" value={manualFiber} onChange={(e) => setManualFiber(e.target.value)} />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setManualOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={commitManual} disabled={!manualTitle.trim()}>
+              Salvar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={weightOpen} title="Registrar peso" onClose={() => setWeightOpen(false)}>
+        <div className="grid gap-4">
+          <TextField label="Peso (kg)" inputMode="decimal" value={weightInput} onChange={(e) => setWeightInput(e.target.value)} placeholder="Ex.: 78.4" />
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setWeightOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={commitWeight}>
+              Salvar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={waterOpen} title="Ajustar água" onClose={() => setWaterOpen(false)}>
+        <div className="grid gap-4">
+          <TextField label="Água (ml)" inputMode="numeric" value={waterInput} onChange={(e) => setWaterInput(e.target.value)} placeholder="Ex.: 1500" />
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setWaterOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={commitWater}>
+              Salvar
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={!!selected} title="Adicionar ao plano" onClose={() => setSelected(null)}>
         {selected ? (
