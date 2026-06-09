@@ -15,6 +15,9 @@ dist-ssr
 # Cloudflare Worker build artifacts
 cf-worker/.wrangler/
 
+# Vercel (local project link config)
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
