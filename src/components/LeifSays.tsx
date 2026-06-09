@@ -1,7 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LeifMascot } from "@/components/LeifMascot";
-
-type LeifMood = "normal" | "motivate" | "warn" | "celebrate";
+import { LeifMascot, type LeifMood } from "@/components/LeifMascot";
 
 const MOOD_STYLES: Record<LeifMood, string> = {
   normal:    "ring-gold/30 bg-bone/40",
@@ -33,7 +31,7 @@ export function LeifSays({ message, mood = "normal", size = "md", className }: L
       {/* Leif */}
       <div className="flex-shrink-0">
         <div className={cn(imgSize, "overflow-hidden rounded-full ring-2 ring-gold/50 shadow-crisp bg-card/60")}>
-          <LeifMascot variant="avatar" className="h-full w-full" />
+          <LeifMascot variant="avatar" mood={mood} className="h-full w-full" />
         </div>
       </div>
 
@@ -74,8 +72,8 @@ export function LeifEmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl bg-card/80 p-8 ring-1 ring-border shadow-crisp animate-fade-up">
-      <div className="h-28 w-28">
-        <LeifMascot variant="full" className="h-full w-full" />
+      <div className="h-36 w-28">
+        <LeifMascot variant="full" mood={mood} className="h-full w-full" />
       </div>
       <div className="text-center">
         <div className="font-display text-lg font-bold text-fg">{title}</div>
