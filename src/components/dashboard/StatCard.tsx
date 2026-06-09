@@ -44,7 +44,7 @@ export function StatCard({
           : { stroke: "stroke-viking-blue", fill: "fill-viking-blue/14", dot: "fill-viking-blue", icon: "text-viking-blue" };
 
   return (
-    <div className={cn("rounded-2xl bg-card-2/35 p-4 ring-1 ring-border shadow-crisp", className)}>
+    <div className={cn("hover-lift ring-hover rounded-2xl bg-card-2/35 p-4 ring-1 ring-border shadow-crisp", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted">{title}</div>

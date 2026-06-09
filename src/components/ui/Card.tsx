@@ -4,11 +4,12 @@ import { cn } from "@/lib/utils";
 
 type DivProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function Card({ className, ...props }: DivProps) {
+export function Card({ className, interactive, ...props }: DivProps & { interactive?: boolean }) {
   return (
     <div
       className={cn(
         "rounded-xl bg-card/90 ring-1 ring-border shadow-soft backdrop-blur-sm",
+        interactive && "hover-lift ring-hover cursor-pointer",
         className,
       )}
       {...props}

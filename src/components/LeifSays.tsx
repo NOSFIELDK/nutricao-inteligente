@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { LeifMascot } from "@/components/LeifMascot";
 
 type LeifMood = "normal" | "motivate" | "warn" | "celebrate";
 
@@ -31,11 +32,9 @@ export function LeifSays({ message, mood = "normal", size = "md", className }: L
     <div className={cn("flex items-start gap-3", className)}>
       {/* Leif */}
       <div className="flex-shrink-0">
-        <img
-          src={`${import.meta.env.BASE_URL}logo.png`}
-          alt="Leif"
-          className={cn(imgSize, "rounded-full object-cover ring-2 ring-gold/50 shadow-crisp")}
-        />
+        <div className={cn(imgSize, "overflow-hidden rounded-full ring-2 ring-gold/50 shadow-crisp bg-card/60")}>
+          <LeifMascot variant="avatar" className="h-full w-full" />
+        </div>
       </div>
 
       {/* Balão de fala */}
@@ -75,11 +74,9 @@ export function LeifEmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl bg-card/80 p-8 ring-1 ring-border shadow-crisp animate-fade-up">
-      <img
-        src={`${import.meta.env.BASE_URL}logo.png`}
-        alt="Leif"
-        className="h-20 w-20 rounded-full object-cover ring-2 ring-gold/50 shadow-soft"
-      />
+      <div className="h-28 w-28">
+        <LeifMascot variant="full" className="h-full w-full" />
+      </div>
       <div className="text-center">
         <div className="font-display text-lg font-bold text-fg">{title}</div>
         <p className="mt-1 text-sm text-muted leading-relaxed max-w-xs">{message}</p>

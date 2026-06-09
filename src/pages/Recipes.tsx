@@ -150,7 +150,7 @@ export default function RecipesPage() {
         {list.map((r, idx) => (
           <div
             key={r.id}
-            className="group overflow-hidden rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp transition hover:-translate-y-0.5 hover:shadow-soft animate-fade-up"
+            className="group hover-lift ring-hover overflow-hidden rounded-2xl bg-card/85 ring-1 ring-border shadow-crisp animate-fade-up"
             style={{ animationDelay: `${Math.min(idx * 55, 400)}ms` }}
           >
             <Link to={`/receitas/${r.id}`} className="block">
