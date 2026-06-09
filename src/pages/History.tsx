@@ -149,8 +149,10 @@ export default function HistoryPage() {
                   key={d}
                   onClick={() => setSelectedDate(d)}
                   className={[
-                    "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm ring-1 transition",
-                    isActive ? "bg-accent/16 text-fg ring-accent/30" : "bg-card-2/45 text-muted ring-border hover:bg-card-2/70 hover:text-fg",
+                    "group flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm ring-1 transition-all duration-150 active:scale-[0.99]",
+                    isActive
+                      ? "bg-accent/16 text-fg ring-accent/30"
+                      : "bg-card-2/45 text-muted ring-border hover:-translate-y-px hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
                   ].join(" ")}
                 >
                   <div className="min-w-0">
@@ -159,7 +161,7 @@ export default function HistoryPage() {
                       {consumed}/{dayPlan.length} consumido · {Math.round(water / 250) * 250}ml água · {manualCount} registro(s)
                     </div>
                   </div>
-                  <div className="text-[11px] text-muted">ver</div>
+                  <div className="text-[11px] text-muted transition-transform duration-150 group-hover:translate-x-0.5">ver →</div>
                 </button>
               );
             })}

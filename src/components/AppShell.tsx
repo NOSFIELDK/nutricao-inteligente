@@ -46,7 +46,7 @@ function Brand() {
       <img
         src={`${import.meta.env.BASE_URL}logo.png`}
         alt="LeifNutri"
-        className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+        className="h-10 w-10 flex-shrink-0 rounded-full object-cover transition-transform duration-200 ease-out hover:scale-105 hover:rotate-[-3deg]"
         loading="eager"
       />
       <div className="leading-none">
@@ -63,7 +63,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="inline-flex items-center justify-center rounded-lg bg-card-2/70 px-3 py-2 text-xs font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
+      className="press inline-flex items-center justify-center rounded-lg bg-card-2/70 px-3 py-2 text-xs font-medium text-fg ring-1 ring-border transition hover:bg-card-2"
     >
       {isDark ? "Modo claro" : "Modo escuro"}
     </button>
@@ -76,10 +76,10 @@ function NavItemLink({ to, label, subtitle, Icon }: NavItem) {
       to={to}
       className={({ isActive }) =>
         cn(
-          "group flex items-center gap-3 rounded-xl px-3 py-2 ring-1 transition-all duration-150",
+          "group flex items-center gap-3 rounded-xl px-3 py-2 ring-1 transition-all duration-150 active:scale-[0.98]",
           isActive
             ? "bg-accent/16 text-fg ring-accent/30 shadow-[0_0_0_1px_hsl(var(--accent)/0.18),inset_0_1px_0_hsl(var(--accent)/0.12)]"
-            : "bg-transparent text-muted ring-transparent hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
+            : "bg-transparent text-muted ring-transparent hover:translate-x-0.5 hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
         )
       }
     >
@@ -98,12 +98,12 @@ function BottomItemLink({ to, label, Icon }: NavItem) {
       to={to}
       className={({ isActive }) =>
         cn(
-          "flex w-full flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-medium transition",
+          "group flex w-full flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-medium transition active:scale-95",
           isActive ? "bg-accent/16 text-fg" : "text-muted hover:bg-card-2/70 hover:text-fg",
         )
       }
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4 transition-transform duration-150 group-hover:scale-110" />
       <span className="truncate">{label}</span>
     </NavLink>
   );

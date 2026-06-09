@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Micro-interações reutilizáveis ───────────────────────────────────────── */
+@layer components {
+  /* Eleva o card no hover e afunda levemente no clique */
+  .hover-lift {
+    @apply transition-[transform,box-shadow] duration-200 ease-out will-change-transform;
+  }
+  .hover-lift:hover {
+    @apply -translate-y-0.5 shadow-soft;
+  }
+
+  /* Feedback de "press" para elementos clicáveis */
+  .press {
+    @apply transition-transform duration-150 ease-out active:translate-y-px active:scale-[0.985];
+  }
+
+  /* Press mais marcado para ícones/botões pequenos */
+  .tap {
+    @apply transition-transform duration-150 ease-out active:scale-95;
+  }
+
+  /* Realce sutil de anel no hover (cards interativos) */
+  .ring-hover {
+    @apply transition-[box-shadow,border-color] duration-200 ease-out hover:ring-accent/30;
+  }
+}
+
+/* Respeita usuários que preferem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .hover-lift:hover {
+    transform: none !important;
+  }
+}
+
 /* ── LeifNutri — Paleta completa extraída da logo ─────────────────────────── */
 /*
   Verde musgo   #3C6E47  →  accent       (capa, natureza)

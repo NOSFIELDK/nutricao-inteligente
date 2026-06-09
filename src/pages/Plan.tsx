@@ -192,7 +192,7 @@ export default function PlanPage() {
             <div
               key={d}
               className={[
-                "rounded-2xl ring-1 shadow-crisp animate-fade-up transition",
+                "hover-lift rounded-2xl ring-1 shadow-crisp animate-fade-up",
                 isToday ? "bg-accent/8 ring-accent/25" : "bg-card/85 ring-border",
               ].join(" ")}
               style={{ animationDelay: `${idx * 50}ms` }}
@@ -240,7 +240,7 @@ export default function PlanPage() {
                                   </div>
                                   <button
                                     onClick={() => removeFromPlan(p.id)}
-                                    className="rounded-lg px-2 py-1 text-xs font-medium text-muted transition hover:bg-card-2 hover:text-fg"
+                                    className="tap rounded-lg px-2 py-1 text-xs font-medium text-muted transition hover:bg-card-2 hover:text-fg"
                                   >
                                     Remover
                                   </button>
