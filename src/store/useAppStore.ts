@@ -34,6 +34,7 @@ type AppState = {
   recipeCache: Record<string, Recipe>;
   consumedPlan: Record<string, boolean>;
   waterByDate: Record<string, number>;
+  weightByDate: Record<string, number>;
   manualByDate: Record<string, ManualEntry[]>;
   checkInByDate: Record<string, DailyCheckIn>;
   labelScansByDate: Record<string, LabelScan[]>;
@@ -62,6 +63,7 @@ type AppState = {
   toggleConsumed: (planItemId: string) => void;
   setWater: (dateISO: string, waterMl: number) => void;
   addWater: (dateISO: string, deltaMl: number) => void;
+  setWeight: (dateISO: string, weightKg: number | null) => void;
 
   addManualEntry: (params: Omit<ManualEntry, "id">) => void;
   removeManualEntry: (dateISO: string, id: string) => void;
@@ -96,6 +98,7 @@ export const useAppStore = create<AppState>()(
       recipeCache: {},
       consumedPlan: {},
       waterByDate: {},
+      weightByDate: {},
       manualByDate: {},
       checkInByDate: {},
       labelScansByDate: {},
@@ -115,6 +118,7 @@ export const useAppStore = create<AppState>()(
           recipeCache: {},
           consumedPlan: {},
           waterByDate: {},
+          weightByDate: {},
           manualByDate: {},
           checkInByDate: {},
           labelScansByDate: {},
@@ -200,6 +204,16 @@ export const useAppStore = create<AppState>()(
           waterByDate: { ...s.waterByDate, [dateISO]: Math.max(0, Math.round(current + deltaMl)) },
           syncDirty: { ...s.syncDirty, tracking: true },
         }));
+      },
+
+      setWeight: (dateISO, weightKg) => {
+        const map = { ...get().weightByDate };
+        if (weightKg == null || !Number.isFinite(weightKg) || weightKg <= 0) {
+          delete map[dateISO];
+        } else {
+          map[dateISO] = Math.round(Math.min(400, Math.max(20, weightKg)) * 10) / 10;
+        }
+        set((s) => ({ weightByDate: map, syncDirty: { ...s.syncDirty, tracking: true } }));
       },
 
       addManualEntry: (params) => {
@@ -314,9 +328,10 @@ export const useAppStore = create<AppState>()(
           return;
         }
         if (key === "tracking") {
-          const d = data as Partial<Pick<AppState, "waterByDate" | "manualByDate" | "checkInByDate" | "labelScansByDate">>;
+          const d = data as Partial<Pick<AppState, "waterByDate" | "weightByDate" | "manualByDate" | "checkInByDate" | "labelScansByDate">>;
           set((s) => ({
             waterByDate: d.waterByDate ?? s.waterByDate,
+            weightByDate: d.weightByDate ?? s.weightByDate,
             manualByDate: d.manualByDate ?? s.manualByDate,
             checkInByDate: d.checkInByDate ?? s.checkInByDate,
             labelScansByDate: d.labelScansByDate ?? s.labelScansByDate,
@@ -337,7 +352,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEYS.state,
-      version: 7,
+      version: 8,
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState>;
         return {
@@ -349,6 +364,7 @@ export const useAppStore = create<AppState>()(
           recipeCache: version < 3 ? {} : state.recipeCache ?? {},
           consumedPlan: version < 4 ? {} : state.consumedPlan ?? {},
           waterByDate: version < 4 ? {} : state.waterByDate ?? {},
+          weightByDate: version < 8 ? {} : state.weightByDate ?? {},
           manualByDate: version < 5 ? {} : state.manualByDate ?? {},
           checkInByDate: version < 7 ? {} : state.checkInByDate ?? {},
           labelScansByDate: version < 7 ? {} : state.labelScansByDate ?? {},
@@ -368,6 +384,7 @@ export const useAppStore = create<AppState>()(
         recipeCache: state.recipeCache,
         consumedPlan: state.consumedPlan,
         waterByDate: state.waterByDate,
+        weightByDate: state.weightByDate,
         manualByDate: state.manualByDate,
         checkInByDate: state.checkInByDate,
         labelScansByDate: state.labelScansByDate,

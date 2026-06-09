@@ -2,18 +2,20 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { RecommendationCard } from "@/components/RecommendationCard";
+import { BarChart } from "@/components/charts/BarChart";
+import { LineChart } from "@/components/charts/LineChart";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { calcDayMacros } from "@/domain/nutrition/insights";
+import { buildDailySeries } from "@/domain/nutrition/series";
 import { buildTargets } from "@/domain/nutrition/targets";
 import type { CatalogItem, MealSlot, Recommendation } from "@/domain/models";
 import { recommendCatalog } from "@/domain/recommend/recommend";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
-import { LeifSays, LeifEmptyState } from "@/components/LeifSays";
 
 type Tab = "saude" | "doencas" | "performance";
 
@@ -47,6 +49,7 @@ export default function DashboardPage() {
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
   const waterByDate = useAppStore((s) => s.waterByDate);
+  const weightByDate = useAppStore((s) => s.weightByDate);
   const manualByDate = useAppStore((s) => s.manualByDate);
   const customTargets = useAppStore((s) => s.customTargets);
   const addWater = useAppStore((s) => s.addWater);
@@ -58,6 +61,7 @@ export default function DashboardPage() {
   const [selected, setSelected] = React.useState<CatalogItem | null>(null);
   const [dateISO, setDateISO] = React.useState(todayISO());
   const [mealSlot, setMealSlot] = React.useState<MealSlot>("almoco");
+  const [periodDays, setPeriodDays] = React.useState<7 | 30>(7);
 
   const recommendations: Recommendation[] = React.useMemo(() => {
     if (!profile) return [];
@@ -81,15 +85,37 @@ export default function DashboardPage() {
       }),
       { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
     );
+    const proteinG = Math.round((m.proteinG + manual.proteinG) * 10) / 10;
+    const carbsG = Math.round((m.carbsG + manual.carbsG) * 10) / 10;
+    const fatG = Math.round((m.fatG + manual.fatG) * 10) / 10;
+    const fiberG = Math.round((m.fiberG + manual.fiberG) * 10) / 10;
     return {
-      proteinG: Math.round((m.proteinG + manual.proteinG) * 10) / 10,
-      carbsG: Math.round((m.carbsG + manual.carbsG) * 10) / 10,
-      fatG: Math.round((m.fatG + manual.fatG) * 10) / 10,
-      fiberG: Math.round((m.fiberG + manual.fiberG) * 10) / 10,
+      proteinG,
+      carbsG,
+      fatG,
+      fiberG,
+      caloriesKcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
     };
   }, [consumedTodayPlan, manualByDate, mergedCatalog, today]);
   const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
   const waterMl = waterByDate[today] ?? 0;
+
+  const series = React.useMemo(
+    () =>
+      buildDailySeries({
+        catalog: mergedCatalog,
+        plan,
+        consumedPlan,
+        manualByDate,
+        waterByDate,
+        weightByDate,
+        endISO: today,
+        days: periodDays,
+      }),
+    [mergedCatalog, plan, consumedPlan, manualByDate, waterByDate, weightByDate, today, periodDays],
+  );
+  const hasWeight = React.useMemo(() => series.some((p) => p.weightKg != null), [series]);
+  const dayLabel = (iso: string) => iso.slice(8, 10);
 
   const openAdd = (item: CatalogItem) => {
     setSelected(item);
@@ -159,27 +185,106 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            {targets.caloriesKcal ? (
+              <div className="mt-5 grid gap-2 rounded-2xl bg-accent/10 p-4 ring-1 ring-accent/25">
+                <div className="flex items-baseline justify-between">
+                  <div className="text-xs font-medium text-fg/90">Calorias</div>
+                  <div className="text-sm text-muted tabular-nums">
+                    {todayMacros.caloriesKcal} / {targets.caloriesKcal} kcal
+                  </div>
+                </div>
+                <ProgressBar value={todayMacros.caloriesKcal / targets.caloriesKcal} />
+              </div>
+            ) : null}
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
               <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
                 <div className="text-xs font-medium text-fg/90">Proteína</div>
-                <div className="text-sm text-muted">
+                <div className="text-sm text-muted tabular-nums">
                   {todayMacros.proteinG}g / {targets.proteinG}g
                 </div>
                 <ProgressBar value={targets.proteinG > 0 ? todayMacros.proteinG / targets.proteinG : 0} />
               </div>
+              {targets.carbsG ? (
+                <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Carboidrato</div>
+                  <div className="text-sm text-muted tabular-nums">
+                    {todayMacros.carbsG}g / {targets.carbsG}g
+                  </div>
+                  <ProgressBar value={todayMacros.carbsG / targets.carbsG} />
+                </div>
+              ) : null}
+              {targets.fatG ? (
+                <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Gordura</div>
+                  <div className="text-sm text-muted tabular-nums">
+                    {todayMacros.fatG}g / {targets.fatG}g
+                  </div>
+                  <ProgressBar value={todayMacros.fatG / targets.fatG} />
+                </div>
+              ) : null}
               <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
                 <div className="text-xs font-medium text-fg/90">Fibras</div>
-                <div className="text-sm text-muted">
+                <div className="text-sm text-muted tabular-nums">
                   {todayMacros.fiberG}g / {targets.fiberG}g
                 </div>
                 <ProgressBar value={targets.fiberG > 0 ? todayMacros.fiberG / targets.fiberG : 0} />
               </div>
               <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
                 <div className="text-xs font-medium text-fg/90">Água</div>
-                <div className="text-sm text-muted">
+                <div className="text-sm text-muted tabular-nums">
                   {Math.round(waterMl / 250) * 250}ml / {targets.waterMl}ml
                 </div>
                 <ProgressBar value={targets.waterMl > 0 ? waterMl / targets.waterMl : 0} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-display text-xl tracking-tight text-fg">Progresso</div>
+                <div className="mt-1 text-sm text-muted">Saga dos últimos {periodDays} dias.</div>
+              </div>
+              <div className="flex gap-2">
+                {([7, 30] as const).map((d) => (
+                  <Chip key={d} active={periodDays === d} onClick={() => setPeriodDays(d)} type="button">
+                    {d} dias
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {hasWeight ? (
+                <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Peso (kg)</div>
+                  <LineChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: p.weightKg }))} unit="kg" />
+                </div>
+              ) : (
+                <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Peso (kg)</div>
+                  <div className="flex h-[120px] items-center justify-center rounded-xl bg-card/50 px-4 text-center text-xs text-muted ring-1 ring-border">
+                    Registre seu peso no Histórico para ver a evolução aqui.
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                <div className="text-xs font-medium text-fg/90">Proteína (g/dia)</div>
+                <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: p.proteinG }))} target={targets.proteinG} unit="g" />
+              </div>
+
+              {targets.caloriesKcal ? (
+                <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                  <div className="text-xs font-medium text-fg/90">Calorias (kcal/dia)</div>
+                  <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: p.caloriesKcal }))} target={targets.caloriesKcal} unit="" />
+                </div>
+              ) : null}
+
+              <div className="grid gap-2 rounded-2xl bg-card-2/45 p-4 ring-1 ring-border">
+                <div className="text-xs font-medium text-fg/90">Aderência ao plano (%)</div>
+                <BarChart data={series.map((p) => ({ label: dayLabel(p.dateISO), value: Math.round(p.adherence * 100) }))} target={100} unit="%" />
               </div>
             </div>
           </div>

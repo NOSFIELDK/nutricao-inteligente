@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { SelectField, TextField } from "@/components/ui/TextField";
-import type { ActivityLevel, Condition, DietaryPreference, PrimaryGoal, Restriction, UserProfile } from "@/domain/models";
+import type { ActivityLevel, Condition, DietaryPreference, GoalIntent, PrimaryGoal, Restriction, UserProfile } from "@/domain/models";
+import { buildTargets } from "@/domain/nutrition/targets";
 import { useAppStore } from "@/store/useAppStore";
 import { uid } from "@/utils/id";
 
@@ -13,6 +14,12 @@ const goals: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: "saude", label: "Saúde", desc: "Bem-estar, equilíbrio e rotina sustentável." },
   { value: "tratamento", label: "Tratamento", desc: "Sugestões adaptadas a condições específicas." },
   { value: "performance", label: "Performance", desc: "Foco em proteína, energia e recuperação." },
+];
+
+const goalIntents: { value: GoalIntent; label: string; desc: string }[] = [
+  { value: "cutting", label: "Definição", desc: "Déficit calórico para reduzir gordura, preservando músculo." },
+  { value: "manutencao", label: "Manutenção", desc: "Equilíbrio energético para manter o peso atual." },
+  { value: "bulking", label: "Ganho de massa", desc: "Superávit calórico para construir músculo." },
 ];
 
 const preferences: { value: DietaryPreference; label: string }[] = [
@@ -42,6 +49,18 @@ function toggle<T>(arr: T[], value: T) {
   return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
 }
 
+function PreviewStat({ label, value, unit, highlight }: { label: string; value: string; unit: string; highlight?: boolean }) {
+  return (
+    <div className={["rounded-xl p-3 ring-1", highlight ? "bg-accent/16 ring-accent/30" : "bg-card-2/60 ring-border"].join(" ")}>
+      <div className="text-xs font-medium text-muted">{label}</div>
+      <div className="mt-1 text-fg">
+        <span className="text-lg font-semibold tabular-nums">{value}</span>
+        <span className="ml-1 text-xs text-muted">{unit}</span>
+      </div>
+    </div>
+  );
+}
+
 function clampNumber(value: number, min: number, max: number) {
   if (Number.isNaN(value)) return min;
   return Math.min(max, Math.max(min, value));
@@ -57,6 +76,7 @@ export default function ProfilePage() {
   const [weightKg, setWeightKg] = React.useState(profile?.weightKg ?? 72);
   const [heightCm, setHeightCm] = React.useState(profile?.heightCm ?? 172);
   const [goal, setGoal] = React.useState<PrimaryGoal>(profile?.primaryGoal ?? "saude");
+  const [goalIntent, setGoalIntent] = React.useState<GoalIntent>(profile?.goalIntent ?? "manutencao");
   const [dietaryPreferences, setDietaryPreferences] = React.useState<DietaryPreference[]>(
     profile?.dietaryPreferences ?? (["onivoro"] as DietaryPreference[]),
   );
@@ -72,20 +92,24 @@ export default function ProfilePage() {
     return next;
   };
 
+  const draft: UserProfile = {
+    id: profile?.id ?? uid("user"),
+    age: clampNumber(age, 10, 99),
+    sex,
+    weightKg: clampNumber(weightKg, 25, 260),
+    heightCm: clampNumber(heightCm, 120, 230),
+    primaryGoal: goal,
+    dietaryPreferences: normalizePrefs(dietaryPreferences),
+    restrictions: restr,
+    conditions: conds,
+    activityLevel: activity,
+    goalIntent,
+  };
+
+  const preview = buildTargets(draft);
+
   const onSave = () => {
-    const next: UserProfile = {
-      id: profile?.id ?? uid("user"),
-      age: clampNumber(age, 10, 99),
-      sex,
-      weightKg: clampNumber(weightKg, 25, 260),
-      heightCm: clampNumber(heightCm, 120, 230),
-      primaryGoal: goal,
-      dietaryPreferences: normalizePrefs(dietaryPreferences),
-      restrictions: restr,
-      conditions: conds,
-      activityLevel: activity,
-    };
-    setProfile(next);
+    setProfile(draft);
     navigate("/painel");
   };
 
@@ -164,7 +188,49 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 animate-fade-up" style={{ animationDelay: "180ms" } as React.CSSProperties}>
+        <Card className="animate-fade-up" style={{ animationDelay: "180ms" } as React.CSSProperties}>
+          <CardHeader>
+            <CardTitle>Objetivo de Batalha</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {goalIntents.map((g) => (
+                <button
+                  key={g.value}
+                  onClick={() => setGoalIntent(g.value)}
+                  className={[
+                    "rounded-xl p-3 text-left ring-1 transition-all duration-200",
+                    goalIntent === g.value
+                      ? "bg-accent/16 ring-accent/30 shadow-[0_0_0_1px_hsl(var(--accent)/0.18),inset_0_1px_0_hsl(var(--accent)/0.12)] scale-[1.02]"
+                      : "bg-card-2/60 ring-border hover:bg-card-2 hover:scale-[1.01]",
+                  ].join(" ")}
+                >
+                  <div className="font-medium text-fg">{g.label}</div>
+                  <div className="mt-1 text-xs leading-snug text-muted">{g.desc}</div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="animate-fade-up bg-accent/[0.06] ring-accent/20" style={{ animationDelay: "240ms" } as React.CSSProperties}>
+          <CardHeader>
+            <CardTitle>Profecia das Metas</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="text-xs text-muted">Calculado pela sua força e missão. Atualiza enquanto você ajusta.</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <PreviewStat label="Calorias" value={`${preview.caloriesKcal ?? 0}`} unit="kcal" highlight />
+              <PreviewStat label="Proteína" value={`${preview.proteinG}`} unit="g" />
+              <PreviewStat label="Carboidrato" value={`${preview.carbsG ?? 0}`} unit="g" />
+              <PreviewStat label="Gordura" value={`${preview.fatG ?? 0}`} unit="g" />
+              <PreviewStat label="Fibras" value={`${preview.fiberG}`} unit="g" />
+              <PreviewStat label="Água" value={`${(preview.waterMl / 1000).toFixed(1)}`} unit="L" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2 animate-fade-up" style={{ animationDelay: "300ms" } as React.CSSProperties}>
           <CardHeader>
             <CardTitle>Código de Honra Alimentar</CardTitle>
           </CardHeader>
