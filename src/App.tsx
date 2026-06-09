@@ -2,6 +2,7 @@ import * as React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import { AppShell } from "@/components/AppShell";
+import { LeifMascot } from "@/components/LeifMascot";
 import { ReminderBanner } from "@/components/ReminderBanner";
 import { SyncManager } from "@/components/SyncManager";
 import { useAppStore } from "@/store/useAppStore";
@@ -20,12 +21,16 @@ const InsightsPage = React.lazy(() => import("@/pages/Insights"));
 const SettingsPage = React.lazy(() => import("@/pages/Settings"));
 const AboutPage = React.lazy(() => import("@/pages/About"));
 const ResetPasswordPage = React.lazy(() => import("@/pages/ResetPassword"));
+const NotFoundPage = React.lazy(() => import("@/pages/NotFound"));
 
 function RouteFallback() {
   return (
-    <div className="mx-auto grid max-w-[1220px] gap-6 px-4 pb-24 pt-6 md:pb-10">
-      <div className="rounded-2xl bg-card/70 p-4 text-sm text-muted ring-1 ring-border shadow-crisp">
-        Carregando…
+    <div className="mx-auto grid min-h-[60vh] max-w-[1220px] place-items-center px-4 pb-24 pt-6 md:pb-10">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-24 w-24">
+          <LeifMascot variant="avatar" mood="normal" animated className="h-full w-full" />
+        </div>
+        <div className="font-display text-sm tracking-wide text-muted">Reunindo o clã…</div>
       </div>
     </div>
   );
@@ -71,6 +76,7 @@ export default function App() {
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
               <Route path="/reset-senha" element={<ResetPasswordPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
         </React.Suspense>
