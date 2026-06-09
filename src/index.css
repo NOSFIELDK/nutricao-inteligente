@@ -28,6 +28,35 @@
   }
 }
 
+/* ── Animações de vida do mascote Leif ────────────────────────────────────── */
+@keyframes leif-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.5%) scale(1.012); }
+}
+@keyframes leif-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3%) rotate(-2deg); }
+  75% { transform: translateY(-3%) rotate(2deg); }
+}
+@keyframes leif-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  94% { transform: scaleY(0.1); }
+}
+
+.leif-breathe {
+  animation: leif-breathe 3.8s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+.leif-bob {
+  animation: leif-bob 2.4s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+.leif-eyes {
+  animation: leif-blink 5.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 /* Respeita usuários que preferem menos movimento */
 @media (prefers-reduced-motion: reduce) {
   *,

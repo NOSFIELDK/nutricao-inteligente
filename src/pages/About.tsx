@@ -29,7 +29,7 @@ export default function AboutPage() {
 
       <div className="flex flex-col items-center gap-6 rounded-2xl bg-gradient-to-br from-card/90 to-card-2/55 p-6 ring-1 ring-gold/25 shadow-crisp animate-fade-up sm:flex-row sm:items-center">
         <div className="h-44 w-36 shrink-0 drop-shadow-md">
-          <LeifMascot variant="full" mood="celebrate" className="h-full w-full" />
+          <LeifMascot variant="full" mood="celebrate" animated className="h-full w-full" />
         </div>
         <div className="text-center sm:text-left">
           <div className="font-display text-3xl font-black tracking-wide">

@@ -15,19 +15,21 @@ export function LeifMascot({
   variant = "avatar",
   style = "crafted",
   mood = "normal",
+  animated = false,
   className,
   title = "Leif",
 }: {
   variant?: LeifMascotVariant;
   style?: LeifMascotStyle;
   mood?: LeifMood;
+  animated?: boolean;
   className?: string;
   title?: string;
 }) {
   if (style === "blocky") {
     return <LeifMascotBlocky variant={variant} className={className} title={title} />;
   }
-  return <LeifMascotCrafted variant={variant} mood={mood} className={className} title={title} />;
+  return <LeifMascotCrafted variant={variant} mood={mood} animated={animated} className={className} title={title} />;
 }
 
 /* ─────────────────────────── Paleta-material (identidade fixa) ───────────── */
@@ -72,11 +74,13 @@ const C = {
 function LeifMascotCrafted({
   variant,
   mood,
+  animated,
   className,
   title,
 }: {
   variant: LeifMascotVariant;
   mood: LeifMood;
+  animated?: boolean;
   className?: string;
   title: string;
 }) {
@@ -84,11 +88,12 @@ function LeifMascotCrafted({
   const id = (s: string) => `leif_${uid}_${s}`;
   const isFull = variant === "full";
   const viewBox = isFull ? "0 0 240 372" : "0 0 240 244";
+  const animClass = animated ? (mood === "celebrate" ? "leif-bob" : "leif-breathe") : null;
 
   return (
     <svg
       viewBox={viewBox}
-      className={cn("block", className)}
+      className={cn("block", animClass, className)}
       role="img"
       aria-label={title}
       preserveAspectRatio="xMidYMid meet"
@@ -139,14 +144,14 @@ function LeifMascotCrafted({
 
       <g filter={`url(#${id("soft")})`}>
         {isFull ? <CraftedBody id={id} /> : null}
-        <CraftedBust id={id} mood={mood} />
+        <CraftedBust id={id} mood={mood} animated={animated} />
       </g>
     </svg>
   );
 }
 
 /* ─────────────────────────── Busto: capacete, rosto, barba ───────────────── */
-function CraftedBust({ id, mood }: { id: (s: string) => string; mood: LeifMood }) {
+function CraftedBust({ id, mood, animated }: { id: (s: string) => string; mood: LeifMood; animated?: boolean }) {
   return (
     <g stroke={C.ink} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round">
       {/* Colar de pele / ombros */}
@@ -199,7 +204,7 @@ function CraftedBust({ id, mood }: { id: (s: string) => string; mood: LeifMood }
       <path d="M 120 132 L 120 162" fill="none" stroke={C.steelL} strokeWidth={2} strokeOpacity={0.7} />
 
       {/* Olhos + sobrancelhas por humor */}
-      <Eyes mood={mood} />
+      <Eyes mood={mood} animated={animated} />
 
       {/* Barba ruiva */}
       <path
@@ -230,10 +235,11 @@ function CraftedBust({ id, mood }: { id: (s: string) => string; mood: LeifMood }
 }
 
 /* ─────────────────────────── Olhos + sobrancelhas ────────────────────────── */
-function Eyes({ mood }: { mood: LeifMood }) {
+function Eyes({ mood, animated }: { mood: LeifMood; animated?: boolean }) {
   const lx = 104;
   const rx = 136;
   const ey = 142;
+  const blinkClass = animated ? "leif-eyes" : undefined;
 
   if (mood === "celebrate") {
     return (
@@ -271,10 +277,12 @@ function Eyes({ mood }: { mood: LeifMood }) {
 
   return (
     <g>
-      <ellipse cx={lx} cy={ey} rx={eye.rx} ry={eye.ry} fill={C.ink} stroke="none" />
-      <ellipse cx={rx} cy={ey} rx={eye.rx} ry={eye.ry} fill={C.ink} stroke="none" />
-      <circle cx={lx - 1.2} cy={ey - 1.4} r={1.1} fill={C.white} stroke="none" />
-      <circle cx={rx - 1.2} cy={ey - 1.4} r={1.1} fill={C.white} stroke="none" />
+      <g className={blinkClass}>
+        <ellipse cx={lx} cy={ey} rx={eye.rx} ry={eye.ry} fill={C.ink} stroke="none" />
+        <ellipse cx={rx} cy={ey} rx={eye.rx} ry={eye.ry} fill={C.ink} stroke="none" />
+        <circle cx={lx - 1.2} cy={ey - 1.4} r={1.1} fill={C.white} stroke="none" />
+        <circle cx={rx - 1.2} cy={ey - 1.4} r={1.1} fill={C.white} stroke="none" />
+      </g>
       <path d={brow} fill="none" stroke={C.inkSoft} strokeWidth={3} />
     </g>
   );
