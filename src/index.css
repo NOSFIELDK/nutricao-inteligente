@@ -28,6 +28,9 @@
   --accent: 138 30% 33%;
   --accent-2: 28 79% 52%;
 
+  --bg-texture-opacity: 0.08;
+  --bg-texture-scale: 10px;
+
   /* ── Cores extras da logo ── */
   --gold: 38 65% 47%;          /* Ouro Celta #C4912A */
   --viking-blue: 210 42% 50%;  /* Azul Viking #4A7EB5 */
@@ -56,6 +59,9 @@
   --accent: 190 55% 42%;
   --accent-2: 38 80% 55%;
 
+  --bg-texture-opacity: 0.12;
+  --bg-texture-scale: 12px;
+
   /* Versões luminosas para dark mode */
   --gold: 38 75% 58%;
   --viking-blue: 210 60% 62%;
@@ -77,6 +83,7 @@
   --accent: 220 90% 45%;
   --accent-2: 28 100% 45%;
   --shadow: 0 0% 0%;
+  --bg-texture-opacity: 0;
 }
 
 .dark.hc {
@@ -88,6 +95,7 @@
   --border: 0 0% 100%;
   --accent: 200 100% 55%;
   --accent-2: 45 100% 55%;
+  --bg-texture-opacity: 0;
 }
 
 .fs-112 {
@@ -111,7 +119,39 @@ body {
   background:
     radial-gradient(1400px 700px at 15% 0%, hsl(var(--accent) / 0.12), transparent 55%),
     radial-gradient(900px 600px at 85% 0%, hsl(var(--accent-2) / 0.09), transparent 50%),
+    linear-gradient(
+      90deg,
+      hsl(var(--fg) / calc(var(--bg-texture-opacity) * 0.75)) 0 25%,
+      transparent 25% 50%,
+      hsl(var(--fg) / calc(var(--bg-texture-opacity) * 0.75)) 50% 75%,
+      transparent 75% 100%
+    ),
+    linear-gradient(
+      0deg,
+      hsl(var(--fg) / calc(var(--bg-texture-opacity) * 0.55)) 0 25%,
+      transparent 25% 50%,
+      hsl(var(--fg) / calc(var(--bg-texture-opacity) * 0.55)) 50% 75%,
+      transparent 75% 100%
+    ),
+    radial-gradient(circle at 20% 30%, hsl(var(--fg) / calc(var(--bg-texture-opacity) * 0.8)) 0 1px, transparent 1px),
+    radial-gradient(circle at 72% 78%, hsl(var(--fg) / calc(var(--bg-texture-opacity) * 0.6)) 0 1px, transparent 1px),
     hsl(var(--bg));
+  background-size:
+    auto,
+    auto,
+    var(--bg-texture-scale) var(--bg-texture-scale),
+    var(--bg-texture-scale) var(--bg-texture-scale),
+    34px 34px,
+    52px 52px,
+    auto;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    3px 5px,
+    0 0,
+    12px 18px,
+    0 0;
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
