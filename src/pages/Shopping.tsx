@@ -64,6 +64,15 @@ export default function ShoppingPage() {
               />
             </div>
           )}
+          {list.length > 0 && remaining === 0 && (
+            <div className="rounded-xl bg-gold/8 p-3 ring-1 ring-gold/25 animate-fade-up">
+              <LeifSays
+                mood="celebrate"
+                size="sm"
+                message="Saque completo, guerreiro! Todos os suprimentos garantidos. Que Odin abençoe sua conquista! 🪓"
+              />
+            </div>
+          )}
         </div>
         <div className="grid gap-2 p-4">
           {list.length === 0 ? (

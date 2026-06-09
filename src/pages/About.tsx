@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { LeifMascot } from "@/components/LeifMascot";
 
 function RefLink({ href, label }: { href: string; label: string }) {
   return (
@@ -23,6 +24,23 @@ export default function AboutPage() {
         <div className="font-display text-2xl tracking-tight text-fg">Sobre / Avisos</div>
         <div className="mt-1 text-sm text-muted">
           Um app para organização alimentar, hábitos e educação nutricional. Não substitui acompanhamento profissional.
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-6 rounded-2xl bg-gradient-to-br from-card/90 to-card-2/55 p-6 ring-1 ring-gold/25 shadow-crisp animate-fade-up sm:flex-row sm:items-center">
+        <div className="h-44 w-36 shrink-0 drop-shadow-md">
+          <LeifMascot variant="full" mood="celebrate" className="h-full w-full" />
+        </div>
+        <div className="text-center sm:text-left">
+          <div className="font-display text-3xl font-black tracking-wide">
+            <span className="text-fg">Leif</span>
+            <span className="text-accent">Nutri</span>
+          </div>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
+            Eu sou <span className="font-semibold text-gold">Leif</span>, seu guia nas batalhas alimentares. Organize refeições,
+            acompanhe metas e conquiste hábitos saudáveis — com a disciplina de um verdadeiro guerreiro nórdico.
+          </p>
+          <p className="mt-2 text-xs italic text-muted">"Não há glória sem sacrifício. Não há vitória sem preparo."</p>
         </div>
       </div>
 
