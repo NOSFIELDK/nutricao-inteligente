@@ -3,7 +3,7 @@ type AiTranslation = { translated_text: string };
 type Env = {
   NUTRI_KV: KVNamespace;
   DB?: D1Database;
-  AI?: { run(model: string, params: { text: string; source_lang: string; target_lang: string }): Promise<AiTranslation> };
+  AI?: { run(model: string, params: Record<string, unknown>): Promise<{ translated_text?: string; response?: string }> };
   USDA_API_KEY?: string;
   MEALDB_BASE?: string;
   FDC_BASE?: string;
@@ -1004,6 +1004,66 @@ async function handleGetById(req: Request, env: Env) {
   return json(normalized);
 }
 
+// ── Leif IA — chat de nutrição via Workers AI ───────────────────────────────
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
+function buildLeifSystemPrompt(context: unknown): string {
+  let ctx = "";
+  if (context && typeof context === "object") {
+    try {
+      ctx = JSON.stringify(context).slice(0, 1500);
+    } catch {
+      ctx = "";
+    }
+  }
+  return [
+    "Você é Leif, um guerreiro viking que virou guia de nutrição no app LeifNutri.",
+    "Fale em português do Brasil, de forma amigável, prática e objetiva (2 a 5 frases).",
+    "Use um leve tom viking (ex.: 'guerreiro', 'conquista'), sem exagerar nem virar piada.",
+    "Baseie-se em nutrição geral e hábitos saudáveis. Seja honesto sobre incertezas.",
+    "NÃO faça diagnósticos médicos. Para condições de saúde, oriente procurar um profissional.",
+    "Quando houver dados do usuário, personalize a resposta com eles.",
+    ctx ? `Dados do usuário (JSON): ${ctx}` : "Sem dados do usuário disponíveis.",
+  ].join("\n");
+}
+
+async function handleLeifChat(req: Request, env: Env) {
+  if (!env.AI) {
+    return json({ error: "ai_unavailable", message: "O Leif está descansando (IA indisponível)." }, { status: 503 }, req, env);
+  }
+  let body: { messages?: ChatMsg[]; context?: unknown };
+  try {
+    body = (await req.json()) as { messages?: ChatMsg[]; context?: unknown };
+  } catch {
+    return json({ error: "bad_request", message: "JSON inválido." }, { status: 400 }, req, env);
+  }
+
+  const raw = Array.isArray(body.messages) ? body.messages : [];
+  const history = raw
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
+    .slice(-8)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 1200) }));
+
+  if (history.length === 0 || history[history.length - 1].role !== "user") {
+    return json({ error: "bad_request", message: "Envie ao menos uma mensagem do usuário." }, { status: 400 }, req, env);
+  }
+
+  const messages = [{ role: "system", content: buildLeifSystemPrompt(body.context) }, ...history];
+
+  try {
+    const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+      messages,
+      max_tokens: 400,
+      temperature: 0.6,
+    });
+    const reply = (result.response ?? "").trim() || "Hmm, as runas falharam. Tente perguntar de outro jeito, guerreiro.";
+    return json({ reply }, undefined, req, env);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return json({ error: "ai_error", message }, { status: 502 }, req, env);
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env) {
     try {
@@ -1018,6 +1078,11 @@ export default {
       if (url.pathname.startsWith("/api/recipes/")) {
         if (req.method !== "GET") return methodNotAllowed(req, env);
         return await handleGetById(req, env);
+      }
+
+      if (url.pathname === "/api/leif/chat") {
+        if (req.method !== "POST") return methodNotAllowed(req, env);
+        return await handleLeifChat(req, env);
       }
 
       if (url.pathname === "/api/auth/register") {

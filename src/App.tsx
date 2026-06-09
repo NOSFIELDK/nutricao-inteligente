@@ -2,6 +2,7 @@ import * as React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import { AppShell } from "@/components/AppShell";
+import { LeifChat } from "@/components/LeifChat";
 import { LeifMascot } from "@/components/LeifMascot";
 import { ReminderBanner } from "@/components/ReminderBanner";
 import { SyncManager } from "@/components/SyncManager";
@@ -82,6 +83,7 @@ export default function App() {
         </React.Suspense>
       </Router>
       <ReminderBanner />
+      <LeifChat />
     </>
   );
 }
