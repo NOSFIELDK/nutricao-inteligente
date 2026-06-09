@@ -1,4 +1,5 @@
 import type { CatalogItem, NutritionTargets, PlanItem, Recipe, UserProfile } from "@/domain/models";
+import { buildTargets } from "@/domain/nutrition/targets";
 
 export type Insight = {
   id: string;
@@ -58,14 +59,9 @@ export function buildInsights(params: {
 
   const { proteinG, fiberG, carbsG } = calcDayMacros({ catalog: params.catalog, plan: params.plan, dateISO: params.dateISO });
 
-  const baseProteinTarget =
-    params.profile.primaryGoal === "performance"
-      ? params.profile.weightKg * 1.6
-      : params.profile.primaryGoal === "tratamento"
-        ? params.profile.weightKg * 1.2
-        : params.profile.weightKg * 1.0;
-  const proteinTarget = params.targetsOverride?.proteinG ?? baseProteinTarget;
-  const fiberTarget = params.targetsOverride?.fiberG ?? 25;
+  const targets = buildTargets(params.profile, params.targetsOverride ?? null);
+  const proteinTarget = targets.proteinG;
+  const fiberTarget = targets.fiberG;
 
   const insights: Insight[] = [];
 

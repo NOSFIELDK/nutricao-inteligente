@@ -25,6 +25,7 @@ function buildItems(state: ReturnType<typeof useAppStore.getState>): Record<Key,
     },
     tracking: {
       waterByDate: state.waterByDate,
+      weightByDate: state.weightByDate,
       manualByDate: state.manualByDate,
       checkInByDate: state.checkInByDate,
       labelScansByDate: state.labelScansByDate,

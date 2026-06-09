@@ -8,6 +8,9 @@ export type Condition = "diabetes" | "hipertensao";
 
 export type ActivityLevel = "baixo" | "moderado" | "alto";
 
+/** Intenção calórica, separada de `primaryGoal` (que é temático/clínico). */
+export type GoalIntent = "cutting" | "manutencao" | "bulking";
+
 export type UserProfile = {
   id: string;
   age: number;
@@ -19,6 +22,10 @@ export type UserProfile = {
   restrictions: Restriction[];
   conditions: Condition[];
   activityLevel: ActivityLevel;
+  /** Opcional para retrocompatibilidade; ausente => "manutencao". */
+  goalIntent?: GoalIntent;
+  /** % de gordura corporal, opcional. Reservado para refino futuro das metas. */
+  bodyFatPct?: number;
 };
 
 export type CatalogTag =
@@ -115,6 +122,13 @@ export type NutritionTargets = {
   proteinG: number;
   fiberG: number;
   waterMl: number;
+  /**
+   * Campos calóricos/macros — opcionais para retrocompatibilidade com metas
+   * salvas antes da Fase 1. `buildTargets` sempre os preenche.
+   */
+  caloriesKcal?: number;
+  carbsG?: number;
+  fatG?: number;
 };
 
 export type DailyTotals = {

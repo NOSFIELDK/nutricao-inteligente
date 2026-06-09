@@ -8,7 +8,7 @@ import { getItem, itemTitle } from "@/domain/catalog";
 import { Badge } from "@/components/ui/Chip";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
-import type { CatalogItem, MealSlot, PlanItem } from "@/domain/models";
+import type { CatalogItem, MealSlot, MoodScore, PlanItem } from "@/domain/models";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
 
@@ -43,12 +43,14 @@ export default function HistoryPage() {
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
   const waterByDate = useAppStore((s) => s.waterByDate);
+  const weightByDate = useAppStore((s) => s.weightByDate);
   const manualByDate = useAppStore((s) => s.manualByDate);
   const checkInByDate = useAppStore((s) => s.checkInByDate);
   const labelScansByDate = useAppStore((s) => s.labelScansByDate);
   const customTargets = useAppStore((s) => s.customTargets);
   const addWater = useAppStore((s) => s.addWater);
   const setWater = useAppStore((s) => s.setWater);
+  const setWeight = useAppStore((s) => s.setWeight);
   const toggleConsumed = useAppStore((s) => s.toggleConsumed);
   const addManualEntry = useAppStore((s) => s.addManualEntry);
   const removeManualEntry = useAppStore((s) => s.removeManualEntry);
@@ -288,7 +290,13 @@ export default function HistoryPage() {
               <div className="text-xs text-muted">sono · humor · fome · treino</div>
             </div>
             <div className="mt-4 grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <TextField
+                  label="Peso (kg)"
+                  inputMode="decimal"
+                  value={weightByDate[selectedDate] == null ? "" : String(weightByDate[selectedDate])}
+                  onChange={(e) => setWeight(selectedDate, e.target.value ? Number(e.target.value) : null)}
+                />
                 <TextField
                   label="Sono (horas)"
                   inputMode="decimal"
@@ -308,8 +316,8 @@ export default function HistoryPage() {
                   inputMode="numeric"
                   value={checkIn.mood == null ? "" : String(checkIn.mood)}
                   onChange={(e) => {
-                    const v = e.target.value ? Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1))) : null;
-                    setCheckIn(selectedDate, { mood: v as any });
+                    const v = e.target.value ? (Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1))) as MoodScore) : null;
+                    setCheckIn(selectedDate, { mood: v });
                   }}
                 />
                 <TextField
@@ -317,8 +325,8 @@ export default function HistoryPage() {
                   inputMode="numeric"
                   value={checkIn.hunger == null ? "" : String(checkIn.hunger)}
                   onChange={(e) => {
-                    const v = e.target.value ? Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1))) : null;
-                    setCheckIn(selectedDate, { hunger: v as any });
+                    const v = e.target.value ? (Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1))) as MoodScore) : null;
+                    setCheckIn(selectedDate, { hunger: v });
                   }}
                 />
               </div>
