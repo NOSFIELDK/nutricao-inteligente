@@ -29,7 +29,11 @@ jobs:
         run: npm ci
         working-directory: cf-worker
 
+      # Migrations são idempotentes (CREATE ... IF NOT EXISTS); o 0002 tem
+      # ALTER TABLE ADD COLUMN que falha se já aplicado — por isso
+      # continue-on-error: uma migration já aplicada não deve quebrar o deploy.
       - name: Apply migrations (D1) 0001
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -37,6 +41,7 @@ jobs:
           command: d1 execute nutricao-inteligente --file=./migrations/0001_auth_sync.sql --remote
 
       - name: Apply migrations (D1) 0002
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -44,12 +49,16 @@ jobs:
           command: d1 execute nutricao-inteligente --file=./migrations/0002_oauth_email.sql --remote
 
       - name: Apply migrations (D1) 0003
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
           command: d1 execute nutricao-inteligente --file=./migrations/0003_sync_items.sql --remote
 
+      # Apenas secrets com valor real são enviados — wrangler-action falha
+      # com valores vazios. Adicione GOOGLE_*/RESEND_*/USDA_* aqui quando
+      # tiverem valores configurados.
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
@@ -57,18 +66,8 @@ jobs:
           workingDirectory: cf-worker
           command: deploy
           secrets: |
-            USDA_API_KEY
-            GOOGLE_CLIENT_ID
-            GOOGLE_CLIENT_SECRET
-            RESEND_API_KEY
-            EMAIL_FROM
             APP_ORIGIN
             CORS_ORIGINS
         env:
-          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
