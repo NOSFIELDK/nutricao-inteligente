@@ -6,6 +6,8 @@ const MOOD_STYLES: Record<LeifMood, string> = {
   motivate:  "ring-accent/40 bg-accent/8",
   warn:      "ring-rust/40 bg-rust/8",
   celebrate: "ring-gold/50 bg-gold/10",
+  sad:       "ring-viking-blue/40 bg-viking-blue/8",
+  sleep:     "ring-steel/40 bg-steel/8",
 };
 
 const MOOD_TAIL: Record<LeifMood, string> = {
@@ -13,6 +15,8 @@ const MOOD_TAIL: Record<LeifMood, string> = {
   motivate:  "bg-accent/20 ring-accent/30",
   warn:      "bg-rust/20 ring-rust/30",
   celebrate: "bg-gold/20 ring-gold/40",
+  sad:       "bg-viking-blue/20 ring-viking-blue/30",
+  sleep:     "bg-steel/20 ring-steel/30",
 };
 
 type LeifSaysProps = {
