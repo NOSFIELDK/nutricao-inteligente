@@ -7,11 +7,14 @@ import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
 import { Badge } from "@/components/ui/Chip";
 import { LeifSays } from "@/components/LeifSays";
+import { MonthCalendar, type DayDots } from "@/components/history/MonthCalendar";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
 import type { CatalogItem, MealSlot, MoodScore, PlanItem } from "@/domain/models";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
+import { buildHistoryCsv } from "@/utils/historyCsv";
+import { downloadText } from "@/utils/download";
 
 const slots: MealSlot[] = ["cafe", "almoco", "lanche", "jantar"];
 
@@ -33,9 +36,14 @@ function levelTone(level: "baixo" | "medio" | "alto") {
   return "muted" as const;
 }
 
-function dayList() {
-  const end = todayISO();
-  return Array.from({ length: 14 }).map((_, idx) => addDaysISO(end, -idx));
+function monthAnchorOf(dateISO: string) {
+  return `${dateISO.slice(0, 7)}-01`;
+}
+
+function shiftMonth(anchor: string, delta: number) {
+  const [y, m] = anchor.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 export default function HistoryPage() {
@@ -61,9 +69,51 @@ export default function HistoryPage() {
 
   const mergedCatalog: CatalogItem[] = React.useMemo(() => [...catalog, ...Object.values(recipeCache)], [recipeCache]);
   const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
-  const days = React.useMemo(() => dayList(), []);
+  const todayStr = todayISO();
 
   const [selectedDate, setSelectedDate] = React.useState(todayISO());
+  const [monthAnchor, setMonthAnchor] = React.useState(() => monthAnchorOf(todayISO()));
+
+  const dotsByDate = React.useMemo(() => {
+    const map = new Map<string, DayDots>();
+    const [y, m] = monthAnchor.split("-").map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const dayPlan = plan.filter((p) => p.dateISO === d && consumedPlan[p.id]);
+      const mac = calcDayMacros({ catalog: mergedCatalog, plan: dayPlan, dateISO: d });
+      const manual = (manualByDate[d] ?? []).reduce(
+        (acc, e) => ({ proteinG: acc.proteinG + e.proteinG, fiberG: acc.fiberG + e.fiberG }),
+        { proteinG: 0, fiberG: 0 },
+      );
+      const proteinG = mac.proteinG + manual.proteinG;
+      const fiberG = mac.fiberG + manual.fiberG;
+      const water = waterByDate[d] ?? 0;
+      const c = checkInByDate[d];
+      map.set(d, {
+        water: targets.waterMl > 0 ? water >= targets.waterMl * 0.9 : water > 0,
+        meta: targets.proteinG > 0 && targets.fiberG > 0 ? proteinG >= targets.proteinG * 0.9 && fiberG >= targets.fiberG * 0.9 : false,
+        checkin: Boolean(c && c.sleepHours != null && c.mood != null && c.hunger != null),
+        weight: weightByDate[d] != null,
+      });
+    }
+    return map;
+  }, [monthAnchor, plan, consumedPlan, mergedCatalog, manualByDate, waterByDate, weightByDate, checkInByDate, targets.waterMl, targets.proteinG, targets.fiberG]);
+
+  const onExportCsv = () => {
+    const csv = buildHistoryCsv({
+      catalog: mergedCatalog,
+      plan,
+      consumedPlan,
+      manualByDate,
+      waterByDate,
+      weightByDate,
+      checkInByDate,
+      endISO: todayStr,
+      days: 90,
+    });
+    downloadText(`leifnutri-historico-${todayStr}.csv`, csv, "text/csv;charset=utf-8");
+  };
   const [manualTitle, setManualTitle] = React.useState("");
   const [manualProtein, setManualProtein] = React.useState("");
   const [manualCarbs, setManualCarbs] = React.useState("");
@@ -126,6 +176,9 @@ export default function HistoryPage() {
           <div className="mt-1 text-sm text-muted">Acompanhe consumo marcado no Plano e hidratação.</div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={onExportCsv} title="Baixar CSV dos últimos 90 dias (peso, água, macros, check-in)">
+            Exportar CSV
+          </Button>
           <Link
             to="/plano"
             className="inline-flex h-10 items-center justify-center rounded-lg bg-card-2 px-4 text-sm font-medium text-fg ring-1 ring-border shadow-crisp transition hover:bg-card active:translate-y-px active:shadow-none"
@@ -136,38 +189,15 @@ export default function HistoryPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-        <div className="rounded-2xl bg-card/80 p-4 ring-1 ring-border shadow-crisp">
-          <div className="text-xs font-medium text-fg/90">Últimos 14 dias</div>
-          <div className="mt-3 grid gap-2">
-            {days.map((d) => {
-              const dayPlan = plan.filter((p) => p.dateISO === d);
-              const consumed = dayPlan.filter((p) => consumedPlan[p.id]).length;
-              const water = waterByDate[d] ?? 0;
-              const manualCount = (manualByDate[d] ?? []).length;
-              const isActive = d === selectedDate;
-              return (
-                <button
-                  key={d}
-                  onClick={() => setSelectedDate(d)}
-                  className={[
-                    "group flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm ring-1 transition-all duration-150 active:scale-[0.99]",
-                    isActive
-                      ? "bg-accent/16 text-fg ring-accent/30"
-                      : "bg-card-2/45 text-muted ring-border hover:-translate-y-px hover:bg-card-2/70 hover:text-fg hover:ring-border/80",
-                  ].join(" ")}
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium text-fg">{d}</div>
-                    <div className="mt-0.5 text-[11px] text-muted">
-                      {consumed}/{dayPlan.length} consumido · {Math.round(water / 250) * 250}ml água · {manualCount} registro(s)
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-muted transition-transform duration-150 group-hover:translate-x-0.5">ver →</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <MonthCalendar
+          monthAnchor={monthAnchor}
+          today={todayStr}
+          selectedDate={selectedDate}
+          dotsByDate={dotsByDate}
+          onSelect={setSelectedDate}
+          onPrev={() => setMonthAnchor((a) => shiftMonth(a, -1))}
+          onNext={() => setMonthAnchor((a) => shiftMonth(a, 1))}
+        />
 
         <div className="grid gap-4">
           <div className="rounded-2xl bg-card/80 p-5 ring-1 ring-border shadow-crisp">
