@@ -3,6 +3,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export type LeifMood = "normal" | "motivate" | "warn" | "celebrate" | "sad" | "sleep";
+export type LeifPose = "idle" | "hero";
+export type LeifItem = "axe" | "shield";
 type LeifMascotVariant = "avatar" | "full";
 type LeifMascotStyle = "crafted" | "blocky";
 
@@ -15,6 +17,8 @@ export function LeifMascot({
   variant = "avatar",
   style = "crafted",
   mood = "normal",
+  pose = "idle",
+  item = "axe",
   animated = false,
   className,
   title = "Leif",
@@ -22,6 +26,8 @@ export function LeifMascot({
   variant?: LeifMascotVariant;
   style?: LeifMascotStyle;
   mood?: LeifMood;
+  pose?: LeifPose;
+  item?: LeifItem;
   animated?: boolean;
   className?: string;
   title?: string;
@@ -29,7 +35,7 @@ export function LeifMascot({
   if (style === "blocky") {
     return <LeifMascotBlocky variant={variant} className={className} title={title} />;
   }
-  return <LeifMascotCrafted variant={variant} mood={mood} animated={animated} className={className} title={title} />;
+  return <LeifMascotCrafted variant={variant} mood={mood} pose={pose} item={item} animated={animated} className={className} title={title} />;
 }
 
 /* ─────────────────────────── Paleta-material (identidade fixa) ───────────── */
@@ -74,12 +80,16 @@ const C = {
 function LeifMascotCrafted({
   variant,
   mood,
+  pose = "idle",
+  item = "axe",
   animated,
   className,
   title,
 }: {
   variant: LeifMascotVariant;
   mood: LeifMood;
+  pose?: LeifPose;
+  item?: LeifItem;
   animated?: boolean;
   className?: string;
   title: string;
@@ -143,7 +153,7 @@ function LeifMascotCrafted({
       </defs>
 
       <g filter={`url(#${id("soft")})`}>
-        {isFull ? <CraftedBody id={id} /> : null}
+        {isFull ? <CraftedBody id={id} pose={pose} item={item} /> : null}
         <CraftedBust id={id} mood={mood} animated={animated} />
       </g>
     </svg>
@@ -368,9 +378,15 @@ function MoodFx({ id, mood }: { id: (s: string) => string; mood: LeifMood }) {
 }
 
 /* ─────────────────────────── Corpo (variante full) ───────────────────────── */
-function CraftedBody({ id }: { id: (s: string) => string }) {
+function CraftedBody({ id, pose = "idle", item = "axe" }: { id: (s: string) => string; pose?: LeifPose; item?: LeifItem }) {
+  const isHero = pose === "hero";
+  // na pose hero a arma é erguida (translada + rotaciona em torno da mão)
+  const weaponTransform = isHero ? "translate(-4 -40) rotate(-22 206 300)" : undefined;
   return (
     <g stroke={C.ink} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round">
+      {/* Sombra no chão (pose hero) */}
+      {isHero && <ellipse cx={120} cy={368} rx={72} ry={7} fill={C.ink} opacity={0.16} stroke="none" />}
+
       {/* Capa atrás */}
       <path d="M 58 224 C 22 268, 30 336, 56 366 L 86 366 C 70 322, 70 268, 86 230 Z" fill={`url(#${id("cloak")})`} />
       <path d="M 182 224 C 218 268, 210 336, 184 366 L 154 366 C 170 322, 170 268, 154 230 Z" fill={`url(#${id("cloak")})`} />
@@ -403,13 +419,35 @@ function CraftedBody({ id }: { id: (s: string) => string }) {
       <path d="M 78 350 C 78 364, 88 368, 102 366 C 110 364, 110 354, 106 350 Z" fill={C.furD} />
       <path d="M 162 350 C 162 364, 152 368, 138 366 C 130 364, 130 354, 134 350 Z" fill={C.furD} />
 
-      {/* Machado (na lateral direita) */}
-      <path d="M 196 250 L 214 360" fill="none" stroke={C.beardD} strokeWidth={6} />
-      <path
-        d="M 196 250 C 214 244, 232 252, 234 270 C 224 270, 214 266, 206 262 C 214 274, 216 286, 212 296 C 202 286, 196 268, 196 250 Z"
-        fill={`url(#${id("helm")})`}
-      />
-      <path d="M 200 256 C 212 254, 222 260, 226 268" fill="none" stroke={C.steelL} strokeWidth={2} strokeOpacity={0.7} />
+      {/* Arma (lateral direita): machado ou escudo */}
+      <g transform={weaponTransform}>
+        {item === "shield" ? (
+          <>
+            {/* Escudo redondo viking */}
+            <circle cx={206} cy={300} r={31} fill={C.beardD} />
+            <circle cx={206} cy={300} r={31} fill="none" stroke={`url(#${id("gold")})`} strokeWidth={5} />
+            {/* tábuas */}
+            <path d="M 206 270 L 206 330 M 184 284 L 228 316 M 184 316 L 228 284" stroke={C.ink} strokeWidth={1.5} strokeOpacity={0.45} fill="none" />
+            {/* umbo central (aço) */}
+            <circle cx={206} cy={300} r={8} fill={`url(#${id("helm")})`} />
+            <circle cx={206} cy={300} r={8} fill="none" stroke={C.ink} strokeWidth={2} />
+            {/* rebites */}
+            {[270, 300, 330].map((y) => (
+              <circle key={`v${y}`} cx={206} cy={y === 300 ? 271 : y} r={2} fill={C.goldD} stroke="none" />
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Machado */}
+            <path d="M 196 250 L 214 360" fill="none" stroke={C.beardD} strokeWidth={6} />
+            <path
+              d="M 196 250 C 214 244, 232 252, 234 270 C 224 270, 214 266, 206 262 C 214 274, 216 286, 212 296 C 202 286, 196 268, 196 250 Z"
+              fill={`url(#${id("helm")})`}
+            />
+            <path d="M 200 256 C 212 254, 222 260, 226 268" fill="none" stroke={C.steelL} strokeWidth={2} strokeOpacity={0.7} />
+          </>
+        )}
+      </g>
     </g>
   );
 }
