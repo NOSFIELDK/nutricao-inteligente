@@ -270,8 +270,16 @@ export default function DashboardPage() {
   }, [addDaysISO, checkInByDate, last7, series, targets.fiberG, targets.proteinG, targets.waterMl, today, weightByDate]);
 
   const insightsToday = React.useMemo(() => {
-    return buildInsights({ profile, catalog: mergedCatalog, plan: dayPlan, dateISO: today, targetsOverride: customTargets ?? null }).slice(0, 3);
-  }, [customTargets, dayPlan, mergedCatalog, profile, today]);
+    return buildInsights({
+      profile,
+      catalog: mergedCatalog,
+      plan: dayPlan,
+      dateISO: today,
+      targetsOverride: customTargets ?? null,
+      waterMl,
+      labelScans: labelScansToday,
+    }).slice(0, 3);
+  }, [customTargets, dayPlan, mergedCatalog, profile, today, waterMl, labelScansToday]);
 
   const syncPending = Boolean(syncDirty.profile || syncDirty.plan || syncDirty.tracking || syncDirty.prefs);
   const lastSync = React.useMemo(() => {

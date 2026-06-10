@@ -165,8 +165,10 @@ export default function HistoryPage() {
       plan: consumedSelectedPlan,
       dateISO: selectedDate,
       targetsOverride: customTargets,
+      waterMl: waterByDate[selectedDate] ?? 0,
+      labelScans: labelScansByDate[selectedDate] ?? [],
     });
-  }, [profile, mergedCatalog, consumedSelectedPlan, selectedDate, customTargets]);
+  }, [profile, mergedCatalog, consumedSelectedPlan, selectedDate, customTargets, waterByDate, labelScansByDate]);
 
   return (
     <div className="grid gap-6">
