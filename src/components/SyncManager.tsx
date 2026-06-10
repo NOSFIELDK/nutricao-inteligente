@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import * as SyncApi from "@/api/syncApi";
+import { buildSyncItems } from "@/api/syncActions";
 import { STORAGE_KEYS } from "@/storage/keys";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -12,26 +13,6 @@ function getApiBase() {
 
 function hasToken() {
   return Boolean((localStorage.getItem(STORAGE_KEYS.authToken) ?? "").trim());
-}
-
-function buildItems(state: ReturnType<typeof useAppStore.getState>): Record<Key, unknown> {
-  return {
-    profile: { profile: state.profile, favorites: state.favorites, customTargets: state.customTargets },
-    plan: {
-      plan: state.plan,
-      consumedPlan: state.consumedPlan,
-      shoppingChecked: state.shoppingChecked,
-      recipeCache: state.recipeCache,
-    },
-    tracking: {
-      waterByDate: state.waterByDate,
-      weightByDate: state.weightByDate,
-      manualByDate: state.manualByDate,
-      checkInByDate: state.checkInByDate,
-      labelScansByDate: state.labelScansByDate,
-    },
-    prefs: { reminders: state.reminders, highContrast: state.highContrast, fontScale: state.fontScale },
-  };
 }
 
 export function SyncManager() {
@@ -87,7 +68,7 @@ export function SyncManager() {
       if (dirtyKeys.length === 0) return;
       pushing = true;
       try {
-        const allItems = buildItems(state);
+        const allItems = buildSyncItems(state);
         const items: Partial<Record<Key, unknown>> = {};
         dirtyKeys.forEach((k) => {
           items[k] = allItems[k];
