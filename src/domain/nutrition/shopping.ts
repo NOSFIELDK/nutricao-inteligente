@@ -1,10 +1,41 @@
 import type { CatalogItem, PlanItem, Recipe } from "@/domain/models";
 
+export type IngredientCategory = "hortifruti" | "proteina" | "laticinios" | "graos" | "temperos" | "outros";
+
 export type ShoppingItem = {
   key: string;
   label: string;
   count: number;
+  category: IngredientCategory;
 };
+
+export const CATEGORY_LABELS: Record<IngredientCategory, string> = {
+  hortifruti: "Hortifrúti",
+  proteina: "Proteínas",
+  laticinios: "Laticínios",
+  graos: "Grãos & cereais",
+  temperos: "Temperos & molhos",
+  outros: "Outros",
+};
+
+export const CATEGORY_ORDER: IngredientCategory[] = ["hortifruti", "proteina", "laticinios", "graos", "temperos", "outros"];
+
+const CATEGORY_KEYWORDS: Record<Exclude<IngredientCategory, "outros">, string[]> = {
+  // proteína vem primeiro para classificar feijão/grão-de-bico como proteína
+  proteina: ["frango", "carne", "peixe", "salmão", "salmao", "atum", "ovo", "ovos", "peito", "filé", "file", "camarão", "camarao", "tofu", "grão de bico", "grao de bico", "lentilha", "feijão", "feijao", "whey", "peru", "tilápia", "tilapia", "sardinha", "patinho", "moída", "moida"],
+  laticinios: ["leite", "queijo", "iogurte", "requeijão", "requeijao", "manteiga", "creme de leite", "ricota", "cottage", "nata", "mussarela", "muçarela", "coalhada"],
+  hortifruti: ["alface", "tomate", "cebola", "alho", "cenoura", "brócolis", "brocolis", "espinafre", "banana", "maçã", "maca", "abacate", "batata", "abobrinha", "pimentão", "pimentao", "couve", "rúcula", "rucula", "pepino", "manga", "morango", "laranja", "fruta", "legume", "verdura", "salsa", "cebolinha", "gengibre", "cogumelo", "champignon", "limão", "limao", "beterraba", "mandioca", "vagem", "berinjela"],
+  graos: ["arroz", "aveia", "quinoa", "macarrão", "macarrao", "pão", "pao", "farinha", "trigo", "granola", "cuscuz", "tapioca", "cereal", "massa", "grão", "grao", "centeio", "milho"],
+  temperos: ["sal", "pimenta", "azeite", "óleo", "oleo", "vinagre", "açúcar", "acucar", "mel", "molho", "shoyu", "mostarda", "orégano", "oregano", "manjericão", "manjericao", "cominho", "páprica", "paprica", "canela", "tempero", "ervas", "curry"],
+};
+
+export function categorizeIngredient(label: string): IngredientCategory {
+  const s = label.toLowerCase();
+  for (const cat of ["proteina", "laticinios", "hortifruti", "graos", "temperos"] as const) {
+    if (CATEGORY_KEYWORDS[cat].some((k) => s.includes(k))) return cat;
+  }
+  return "outros";
+}
 
 function normalizeIngredient(s: string) {
   return s
@@ -44,6 +75,7 @@ export function buildShoppingList(params: { catalog: CatalogItem[]; plan: PlanIt
         key: normalized,
         label: normalized,
         count: (prev?.count ?? 0) + 1,
+        category: prev?.category ?? categorizeIngredient(normalized),
       });
     }
   }
