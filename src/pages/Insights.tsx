@@ -21,6 +21,8 @@ export default function InsightsPage() {
   const recipeCache = useAppStore((s) => s.recipeCache);
   const consumedPlan = useAppStore((s) => s.consumedPlan);
   const manualByDate = useAppStore((s) => s.manualByDate);
+  const waterByDate = useAppStore((s) => s.waterByDate);
+  const labelScansByDate = useAppStore((s) => s.labelScansByDate);
   const customTargets = useAppStore((s) => s.customTargets);
 
   const dateISO = todayISO();
@@ -28,8 +30,17 @@ export default function InsightsPage() {
   const consumedTodayPlan = React.useMemo(() => plan.filter((p) => p.dateISO === dateISO).filter((p) => consumedPlan[p.id]), [consumedPlan, dateISO, plan]);
   const targets = React.useMemo(() => buildTargets(profile, customTargets), [customTargets, profile]);
   const insights = React.useMemo(
-    () => buildInsights({ profile, catalog: mergedCatalog, plan: consumedTodayPlan, dateISO, targetsOverride: customTargets }),
-    [profile, mergedCatalog, consumedTodayPlan, dateISO, customTargets],
+    () =>
+      buildInsights({
+        profile,
+        catalog: mergedCatalog,
+        plan: consumedTodayPlan,
+        dateISO,
+        targetsOverride: customTargets,
+        waterMl: waterByDate[dateISO] ?? 0,
+        labelScans: labelScansByDate[dateISO] ?? [],
+      }),
+    [profile, mergedCatalog, consumedTodayPlan, dateISO, customTargets, waterByDate, labelScansByDate],
   );
   const macros = React.useMemo(() => {
     const m = calcDayMacros({ catalog: mergedCatalog, plan: consumedTodayPlan, dateISO });

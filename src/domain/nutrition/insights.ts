@@ -1,4 +1,4 @@
-import type { CatalogItem, NutritionTargets, PlanItem, Recipe, UserProfile } from "@/domain/models";
+import type { CatalogItem, LabelScan, NutritionTargets, PlanItem, Recipe, UserProfile } from "@/domain/models";
 import { buildTargets } from "@/domain/nutrition/targets";
 
 export type Insight = {
@@ -44,6 +44,8 @@ export function buildInsights(params: {
   plan: PlanItem[];
   dateISO: string;
   targetsOverride?: NutritionTargets | null;
+  waterMl?: number;
+  labelScans?: LabelScan[];
 }): Insight[] {
   if (!params.profile) {
     return [
@@ -91,6 +93,55 @@ export function buildInsights(params: {
       detail: `Estimativa no plano: ${fiberG}g (meta: ${round(fiberTarget)}g).`,
       action: "Aumente legumes/folhas e escolha opções integrais.",
     });
+  }
+
+  // Hidratação
+  if (params.waterMl != null && targets.waterMl > 0) {
+    const ratio = params.waterMl / targets.waterMl;
+    if (ratio < 0.5) {
+      insights.push({
+        id: "water_low",
+        level: "alto",
+        title: "Hidratação baixa",
+        detail: `Você registrou ${Math.round(params.waterMl)}ml (meta: ${targets.waterMl}ml).`,
+        action: "Beba água ao longo do dia; tenha uma garrafa por perto e use os atalhos +250/+500ml.",
+      });
+    } else if (ratio < 0.8) {
+      insights.push({
+        id: "water_mid",
+        level: "medio",
+        title: "Falta um pouco de água",
+        detail: `Você registrou ${Math.round(params.waterMl)}ml (meta: ${targets.waterMl}ml).`,
+        action: "Mais alguns copos para fechar a meta do dia.",
+      });
+    }
+  }
+
+  // Rótulos do dia (sódio / açúcar)
+  if (params.labelScans && params.labelScans.length > 0) {
+    const totalSugar = params.labelScans.reduce((a, s) => a + (s.sugarG || 0), 0);
+    const totalSodium = params.labelScans.reduce((a, s) => a + (s.sodiumMg || 0), 0);
+    const sugaryItems = params.labelScans.filter((s) => s.sugarG >= 15);
+    const saltyItems = params.labelScans.filter((s) => s.sodiumMg >= 400);
+
+    if (sugaryItems.length > 0 || totalSugar >= 25) {
+      insights.push({
+        id: "label_sugar_high",
+        level: "alto",
+        title: "Açúcar alto em rótulos de hoje",
+        detail: `Total registrado: ${round(totalSugar)}g${sugaryItems.length ? ` · destaque: ${sugaryItems.map((s) => s.product).slice(0, 2).join(", ")}` : ""}.`,
+        action: "Prefira versões com menos açúcar e evite bebidas adoçadas; compare rótulos.",
+      });
+    }
+    if (saltyItems.length > 0 || totalSodium >= 2000) {
+      insights.push({
+        id: "label_sodium_high",
+        level: params.profile.conditions.includes("hipertensao") ? "alto" : "medio",
+        title: "Sódio alto em rótulos de hoje",
+        detail: `Total registrado: ${Math.round(totalSodium)}mg${saltyItems.length ? ` · destaque: ${saltyItems.map((s) => s.product).slice(0, 2).join(", ")}` : ""}.`,
+        action: "Reduza ultraprocessados e embutidos; tempere com ervas no lugar do sal.",
+      });
+    }
   }
 
   if (params.profile.conditions.includes("hipertensao")) {
