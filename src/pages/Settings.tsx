@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
 import * as SyncApi from "@/api/syncApi";
+import { forceSync } from "@/api/syncActions";
 import { calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
 import type { FontScale, NutritionTargets, ReminderInterval } from "@/domain/models";
@@ -58,6 +59,8 @@ export default function SettingsPage() {
   const [accountEmail, setAccountEmail] = React.useState<string | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<string | null>(null);
   const [syncBusy, setSyncBusy] = React.useState(false);
+  const [forcing, setForcing] = React.useState(false);
+  const [forceMsg, setForceMsg] = React.useState<string | null>(null);
 
   const profile = useAppStore((s) => s.profile);
   const favorites = useAppStore((s) => s.favorites);
@@ -88,6 +91,34 @@ export default function SettingsPage() {
   const removeReminder = useAppStore((s) => s.removeReminder);
   const markSynced = useAppStore((s) => s.markSynced);
   const applyRemote = useAppStore((s) => s.applyRemote);
+  const syncDirty = useAppStore((s) => s.syncDirty);
+  const syncLastSyncedAt = useAppStore((s) => s.syncLastSyncedAt);
+
+  const SYNC_KEYS = [
+    { key: "profile" as const, label: "Perfil" },
+    { key: "plan" as const, label: "Plano" },
+    { key: "tracking" as const, label: "Registros" },
+    { key: "prefs" as const, label: "Preferências" },
+  ];
+  const pendingKeys = SYNC_KEYS.filter((k) => syncDirty[k.key]);
+  const lastSyncAt = (() => {
+    const times = [syncLastSyncedAt.profile, syncLastSyncedAt.plan, syncLastSyncedAt.tracking, syncLastSyncedAt.prefs].filter(Boolean) as string[];
+    if (times.length === 0) return null;
+    return times.sort().at(-1) ?? null;
+  })();
+
+  const onForceSync = async () => {
+    setForcing(true);
+    setForceMsg(null);
+    try {
+      const res = await forceSync();
+      setForceMsg(`Sincronizado. Enviados: ${res.pushedKeys.length} · baixados: ${res.appliedKeys.length}.`);
+    } catch (e) {
+      setForceMsg(e instanceof Error ? e.message : "Falha ao sincronizar.");
+    } finally {
+      setForcing(false);
+    }
+  };
 
   const baseTargets = React.useMemo(() => buildTargets(profile, null), [profile]);
   const effectiveTargets = React.useMemo(() => buildTargets(profile, customTargets), [profile, customTargets]);
@@ -528,6 +559,48 @@ export default function SettingsPage() {
               )}
             </div>
             {syncStatus ? <div className="text-sm text-muted">{syncStatus}</div> : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Status da nuvem</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {!apiConfigured || !accountEmail ? (
+              <div className="text-sm text-muted">Conecte uma conta acima para sincronizar entre dispositivos.</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-card-2/50 p-3 ring-1 ring-border">
+                  <div className="text-sm text-fg/90">Último sync</div>
+                  <div className="text-sm text-muted tabular-nums">
+                    {lastSyncAt ? new Date(lastSyncAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-card-2/50 p-3 ring-1 ring-border">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-fg/90">Itens pendentes</div>
+                    <div className="text-sm text-muted tabular-nums">{pendingKeys.length}</div>
+                  </div>
+                  {pendingKeys.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {pendingKeys.map((k) => (
+                        <span key={k.key} className="rounded-full bg-accent-2/15 px-2 py-0.5 text-[11px] font-medium text-fg ring-1 ring-accent-2/25">
+                          {k.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={onForceSync} disabled={forcing}>
+                    {forcing ? "Sincronizando…" : "Forçar sincronização"}
+                  </Button>
+                  {pendingKeys.length === 0 && !forcing ? <span className="text-xs text-muted">Tudo sincronizado ✓</span> : null}
+                </div>
+                {forceMsg ? <div className="text-sm text-muted">{forceMsg}</div> : null}
+              </>
+            )}
           </CardContent>
         </Card>
 
