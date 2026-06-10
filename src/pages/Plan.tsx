@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { SelectField, TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
-import type { CatalogItem, MealSlot, PlanItem, Recommendation } from "@/domain/models";
+import type { CatalogItem, MealSlot, PlanItem, Recipe, Recommendation } from "@/domain/models";
 import { calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
 import { recommendCatalog } from "@/domain/recommend/recommend";
@@ -118,6 +118,25 @@ export default function PlanPage() {
       addToPlan({ item: lunch, dateISO: d, mealSlot: "almoco", servings: 1 });
       addToPlan({ item: dinner, dateISO: d, mealSlot: "jantar", servings: 1 });
     }
+  };
+
+  const swapRecipe = (p: PlanItem) => {
+    const current = getItem(mergedCatalog, { type: p.itemType, id: p.itemId });
+    if (!current || current.type !== "recipe") return;
+    const sameDayIds = new Set(plan.filter((x) => x.dateISO === p.dateISO).map((x) => x.itemId));
+    const candidates = mergedCatalog.filter(
+      (it): it is Recipe => it.type === "recipe" && it.id !== current.id && !sameDayIds.has(it.id),
+    );
+    if (candidates.length === 0) return;
+    const calOf = (r: { proteinG: number; carbsG: number; fatG: number }) => r.proteinG * 4 + r.carbsG * 4 + r.fatG * 9;
+    const curCal = calOf(current);
+    // menor distância de macros (proteína pesa mais) + bônus se mesma categoria
+    const score = (r: Recipe) =>
+      Math.abs(r.proteinG - current.proteinG) * 3 + Math.abs(calOf(r) - curCal) * 0.1 + (r.category === current.category ? -8 : 0);
+    const best = candidates.slice().sort((a, b) => score(a) - score(b))[0];
+    if (!best) return;
+    addToPlan({ item: best, dateISO: p.dateISO, mealSlot: p.mealSlot, servings: p.servings });
+    removeFromPlan(p.id);
   };
 
   const openAddFavorite = () => {
@@ -238,12 +257,23 @@ export default function PlanPage() {
                                     <div className="truncate font-medium text-fg">{item ? itemTitle(item) : "Item"}</div>
                                     <div className="mt-0.5 text-xs text-muted">{p.itemType}</div>
                                   </div>
-                                  <button
-                                    onClick={() => removeFromPlan(p.id)}
-                                    className="tap rounded-lg px-2 py-1 text-xs font-medium text-muted transition hover:bg-card-2 hover:text-fg"
-                                  >
-                                    Remover
-                                  </button>
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    {p.itemType === "recipe" && (
+                                      <button
+                                        onClick={() => swapRecipe(p)}
+                                        title="Trocar por outra receita com macros parecidos"
+                                        className="tap rounded-lg px-2 py-1 text-xs font-medium text-accent transition hover:bg-accent/10"
+                                      >
+                                        Trocar
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => removeFromPlan(p.id)}
+                                      className="tap rounded-lg px-2 py-1 text-xs font-medium text-muted transition hover:bg-card-2 hover:text-fg"
+                                    >
+                                      Remover
+                                    </button>
+                                  </div>
                                 </div>
                                 <label className="flex items-center justify-between gap-3 rounded-xl bg-card-2/45 px-3 py-2 ring-1 ring-border">
                                   <span className="text-xs font-medium text-fg/90">Consumido</span>

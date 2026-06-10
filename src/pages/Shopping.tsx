@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { LeifSays } from "@/components/LeifSays";
 import { catalog } from "@/data/catalog";
-import { buildShoppingList } from "@/domain/nutrition/shopping";
+import { buildShoppingList, CATEGORY_LABELS, CATEGORY_ORDER } from "@/domain/nutrition/shopping";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, todayISO } from "@/utils/date";
 
@@ -28,6 +28,11 @@ export default function ShoppingPage() {
   const checked_count = list.filter((i) => !!shoppingChecked[i.key]).length;
   const remaining = list.length - checked_count;
   const progressPct = list.length > 0 ? Math.round((checked_count / list.length) * 100) : 0;
+
+  const groups = React.useMemo(
+    () => CATEGORY_ORDER.map((cat) => ({ cat, items: list.filter((i) => i.category === cat) })).filter((g) => g.items.length > 0),
+    [list],
+  );
 
   return (
     <div className="grid gap-6">
@@ -74,7 +79,7 @@ export default function ShoppingPage() {
             </div>
           )}
         </div>
-        <div className="grid gap-2 p-4">
+        <div className="grid gap-4 p-4">
           {list.length === 0 ? (
             <div className="rounded-xl bg-card-2/40 p-4 ring-1 ring-border">
               <LeifSays
@@ -83,30 +88,41 @@ export default function ShoppingPage() {
               />
             </div>
           ) : (
-            list.map((i, idx) => {
-              const checked = !!shoppingChecked[i.key];
+            groups.map((g) => {
+              const groupDone = g.items.filter((i) => shoppingChecked[i.key]).length;
               return (
-                <label
-                  key={i.key}
-                  className={[
-                    "flex cursor-pointer items-center justify-between gap-4 rounded-xl px-4 py-3 ring-1 transition-all duration-200 animate-fade-up",
-                    checked ? "bg-card-2/45 ring-border/70" : "bg-card/60 ring-border hover:bg-card-2/60",
-                  ].join(" ")}
-                  style={{ animationDelay: `${Math.min(idx * 40, 500)}ms` }}
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) => setShoppingChecked(i.key, e.target.checked)}
-                      className="h-5 w-5 accent-[hsl(var(--accent))]"
-                    />
-                    <div className={marketMode ? "text-base font-medium text-fg" : "text-sm font-medium text-fg"}>
-                      <span className={checked ? "line-through opacity-50 transition-opacity" : ""}>{i.label}</span>
-                    </div>
+                <div key={g.cat} className="grid gap-2">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-fg/70">{CATEGORY_LABELS[g.cat]}</div>
+                    <div className="text-[11px] text-muted tabular-nums">{groupDone}/{g.items.length}</div>
                   </div>
-                  <div className={marketMode ? "text-sm text-muted" : "text-xs text-muted"}>×{i.count}</div>
-                </label>
+                  {g.items.map((i, idx) => {
+                    const checked = !!shoppingChecked[i.key];
+                    return (
+                      <label
+                        key={i.key}
+                        className={[
+                          "flex cursor-pointer items-center justify-between gap-4 rounded-xl px-4 py-3 ring-1 transition-all duration-200 animate-fade-up",
+                          checked ? "bg-card-2/45 ring-border/70" : "bg-card/60 ring-border hover:bg-card-2/60",
+                        ].join(" ")}
+                        style={{ animationDelay: `${Math.min(idx * 40, 400)}ms` }}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => setShoppingChecked(i.key, e.target.checked)}
+                            className="h-5 w-5 accent-[hsl(var(--accent))]"
+                          />
+                          <div className={marketMode ? "text-base font-medium text-fg" : "text-sm font-medium text-fg"}>
+                            <span className={checked ? "line-through opacity-50 transition-opacity" : ""}>{i.label}</span>
+                          </div>
+                        </div>
+                        <div className={marketMode ? "text-sm text-muted" : "text-xs text-muted"}>×{i.count}</div>
+                      </label>
+                    );
+                  })}
+                </div>
               );
             })
           )}
