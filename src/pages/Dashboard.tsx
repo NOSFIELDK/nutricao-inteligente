@@ -50,6 +50,13 @@ function ProgressBar({ value, tone = "accent" }: { value: number; tone?: "accent
   );
 }
 
+const STREAK_MEDALS = [
+  { days: 3, emoji: "🥉", label: "3 dias seguidos" },
+  { days: 7, emoji: "🥈", label: "1 semana seguida" },
+  { days: 14, emoji: "🥇", label: "2 semanas seguidas" },
+  { days: 30, emoji: "🏆", label: "1 mês seguido" },
+] as const;
+
 function formatDateTimeShort(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -657,6 +664,26 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-2 text-xs text-muted">
                       Semana: {weekSummary.perfectDays}/7 dias perfeitos
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {STREAK_MEDALS.map((m) => {
+                        const earned = weekSummary.currentStreak >= m.days;
+                        return (
+                          <div
+                            key={m.days}
+                            title={earned ? `Conquistado: ${m.label}` : `Bloqueado: ${m.label}`}
+                            className={[
+                              "flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ring-1 transition",
+                              earned
+                                ? "bg-gold/15 text-fg ring-gold/35"
+                                : "bg-card-2/40 text-muted opacity-55 ring-border",
+                            ].join(" ")}
+                          >
+                            <span className={earned ? "" : "grayscale"}>{m.emoji}</span>
+                            <span className="tabular-nums">{m.days}d</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
