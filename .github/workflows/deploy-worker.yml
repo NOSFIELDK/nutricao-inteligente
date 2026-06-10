@@ -56,18 +56,14 @@ jobs:
           workingDirectory: cf-worker
           command: d1 execute nutricao-inteligente --file=./migrations/0003_sync_items.sql --remote
 
-      # Apenas secrets com valor real são enviados — wrangler-action falha
-      # com valores vazios. Adicione GOOGLE_*/RESEND_*/USDA_* aqui quando
-      # tiverem valores configurados.
+      # Deploy simples: o script + bindings vêm do wrangler.toml.
+      # CORS_ORIGINS já está em [vars]; APP_ORIGIN/GOOGLE/RESEND, quando
+      # necessários, são definidos uma vez via `wrangler secret put` (fora do CI)
+      # e persistem entre deploys. Não subimos secrets aqui para evitar
+      # chamadas extras à API (rate limit) e falhas com valores vazios.
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
           command: deploy
-          secrets: |
-            APP_ORIGIN
-            CORS_ORIGINS
-        env:
-          APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
-          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
