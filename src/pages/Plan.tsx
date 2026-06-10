@@ -6,10 +6,10 @@ import { Modal } from "@/components/ui/Modal";
 import { SelectField, TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
-import type { CatalogItem, MealSlot, PlanItem, Recipe, Recommendation } from "@/domain/models";
+import type { CatalogItem, MealSlot, PlanItem, Recipe } from "@/domain/models";
 import { calcDayMacros } from "@/domain/nutrition/insights";
 import { buildTargets } from "@/domain/nutrition/targets";
-import { recommendCatalog } from "@/domain/recommend/recommend";
+import { generateDayPlan, generateWeekPlan } from "@/domain/plan/generate";
 import { useAppStore } from "@/store/useAppStore";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
 import { LeifSays } from "@/components/LeifSays";
@@ -104,19 +104,24 @@ export default function PlanPage() {
 
   const generateWeek = () => {
     if (!profile) return;
-    const recs: Recommendation[] = recommendCatalog(profile, mergedCatalog, 30).filter((r) => r.item.type === "recipe");
-    const picks = recs.slice(0, 14).map((r) => r.item);
-    if (picks.length === 0) return;
-
+    const gen = generateWeekPlan({ profile, catalog: mergedCatalog, targets, dates: weekDays });
+    if (gen.length === 0) return;
     clearPlan();
-    let idx = 0;
-    for (const d of weekDays) {
-      const lunch = picks[idx % picks.length];
-      idx += 1;
-      const dinner = picks[idx % picks.length];
-      idx += 1;
-      addToPlan({ item: lunch, dateISO: d, mealSlot: "almoco", servings: 1 });
-      addToPlan({ item: dinner, dateISO: d, mealSlot: "jantar", servings: 1 });
+    for (const g of gen) {
+      const item = getItem(mergedCatalog, { type: "recipe", id: g.recipeId });
+      if (item) addToPlan({ item, dateISO: g.dateISO, mealSlot: g.mealSlot, servings: 1 });
+    }
+  };
+
+  const regenerateDay = (dateISO: string) => {
+    if (!profile) return;
+    const existing = plan.filter((p) => p.dateISO === dateISO);
+    const avoidIds = existing.map((p) => p.itemId);
+    existing.forEach((p) => removeFromPlan(p.id));
+    const gen = generateDayPlan({ profile, catalog: mergedCatalog, targets, dateISO, avoidIds });
+    for (const g of gen) {
+      const item = getItem(mergedCatalog, { type: "recipe", id: g.recipeId });
+      if (item) addToPlan({ item, dateISO, mealSlot: g.mealSlot, servings: 1 });
     }
   };
 
@@ -230,8 +235,19 @@ export default function PlanPage() {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-muted">
-                  {counts.consumed}/{counts.total} consumido(s)
+                <div className="flex items-center gap-2">
+                  {profile && (
+                    <button
+                      onClick={() => regenerateDay(d)}
+                      title="Regenerar as receitas deste dia mantendo as metas"
+                      className="tap rounded-lg px-2 py-1 text-xs font-medium text-accent transition hover:bg-accent/10"
+                    >
+                      Regenerar
+                    </button>
+                  )}
+                  <div className="text-xs text-muted">
+                    {counts.consumed}/{counts.total} consumido(s)
+                  </div>
                 </div>
               </div>
               <div className="grid gap-3 p-4">
