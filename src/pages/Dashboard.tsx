@@ -16,6 +16,7 @@ import { SelectField, TextField } from "@/components/ui/TextField";
 import { catalog } from "@/data/catalog";
 import { buildInsights, calcDayMacros } from "@/domain/nutrition/insights";
 import { buildDailySeries } from "@/domain/nutrition/series";
+import { computeCorrelations } from "@/domain/nutrition/correlation";
 import { buildTargets } from "@/domain/nutrition/targets";
 import type { CatalogItem, MealSlot, Recommendation } from "@/domain/models";
 import { recommendCatalog } from "@/domain/recommend/recommend";
@@ -268,6 +269,11 @@ export default function DashboardPage() {
     const perfectDays = completion.filter((d) => d.isPerfect).length;
     return { completion, currentStreak, perfectDays };
   }, [addDaysISO, checkInByDate, last7, series, targets.fiberG, targets.proteinG, targets.waterMl, today, weightByDate]);
+
+  const correlations = React.useMemo(() => {
+    const s = buildDailySeries({ catalog: mergedCatalog, plan, consumedPlan, manualByDate, waterByDate, weightByDate, endISO: today, days: 30 });
+    return computeCorrelations({ series: s, checkInByDate });
+  }, [mergedCatalog, plan, consumedPlan, manualByDate, waterByDate, weightByDate, today, checkInByDate]);
 
   const insightsToday = React.useMemo(() => {
     return buildInsights({
@@ -722,6 +728,38 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {correlations.length > 0 && (
+                <Card className="animate-fade-up" style={{ animationDelay: "30ms" } as React.CSSProperties}>
+                  <CardHeader>
+                    <CardTitle>Correlações</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-2">
+                    <div className="text-xs text-muted">Tendências observadas nos últimos 30 dias (não indicam causa).</div>
+                    {correlations.map((c) => (
+                      <div key={c.id} className="rounded-2xl bg-card-2/35 p-3 ring-1 ring-border">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-fg">{c.label}</div>
+                          <span
+                            className={[
+                              "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1",
+                              c.strength === "forte"
+                                ? "bg-accent/15 text-fg ring-accent/30"
+                                : c.strength === "moderada"
+                                  ? "bg-gold/15 text-fg ring-gold/30"
+                                  : "bg-card-2/60 text-muted ring-border",
+                            ].join(" ")}
+                          >
+                            {c.strength} · r={c.r}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-muted">{c.text}</div>
+                        <div className="mt-0.5 text-[10px] text-muted/70">{c.n} dias com dados</div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card className="animate-fade-up" style={{ animationDelay: "40ms" } as React.CSSProperties}>
                 <CardHeader>
