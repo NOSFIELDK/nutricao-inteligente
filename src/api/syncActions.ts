@@ -32,6 +32,7 @@ export function buildSyncItems(state: ReturnType<typeof useAppStore.getState>): 
       fontScale: state.fontScale,
       mascotStyle: state.mascotStyle,
       mascotSize: state.mascotSize,
+      mascotItem: state.mascotItem,
     },
   };
 }

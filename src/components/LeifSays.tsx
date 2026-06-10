@@ -79,11 +79,12 @@ export function LeifEmptyState({
 }) {
   const mascotStyle = useAppStore((s) => s.mascotStyle);
   const mascotSize = useAppStore((s) => s.mascotSize);
+  const mascotItem = useAppStore((s) => s.mascotItem);
   const box = mascotSize === "sm" ? "h-28 w-24" : mascotSize === "lg" ? "h-44 w-36" : "h-36 w-28";
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl bg-card/80 p-8 ring-1 ring-border shadow-crisp animate-fade-up">
       <div className={box}>
-        <LeifMascot variant="full" mood={mood} style={mascotStyle} animated className="h-full w-full" />
+        <LeifMascot variant="full" mood={mood} style={mascotStyle} item={mascotItem} animated className="h-full w-full" />
       </div>
       <div className="text-center">
         <div className="font-display text-lg font-bold text-fg">{title}</div>

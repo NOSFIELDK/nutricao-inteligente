@@ -83,6 +83,8 @@ export default function SettingsPage() {
   const setMascotStyle = useAppStore((s) => s.setMascotStyle);
   const mascotSize = useAppStore((s) => s.mascotSize);
   const setMascotSize = useAppStore((s) => s.setMascotSize);
+  const mascotItem = useAppStore((s) => s.mascotItem);
+  const setMascotItem = useAppStore((s) => s.setMascotItem);
 
   const reminders = useAppStore((s) => s.reminders);
   const setReminderEnabled = useAppStore((s) => s.setReminderEnabled);
@@ -691,8 +693,8 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="flex items-center justify-center rounded-xl bg-card-2/40 p-4 ring-1 ring-border">
-              <div className="h-28 w-24">
-                <LeifMascot variant="full" mood="celebrate" style={mascotStyle} animated className="h-full w-full" />
+              <div className="h-32 w-28">
+                <LeifMascot variant="full" mood="celebrate" pose="hero" item={mascotItem} style={mascotStyle} animated className="h-full w-full" />
               </div>
             </div>
             <label className="grid gap-1.5">
@@ -716,6 +718,17 @@ export default function SettingsPage() {
                 <option value="sm">Pequeno</option>
                 <option value="md">Médio</option>
                 <option value="lg">Grande</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-medium text-fg/90">Item</span>
+              <select
+                value={mascotItem}
+                onChange={(e) => setMascotItem(e.target.value as "axe" | "shield")}
+                className="h-11 w-full appearance-none rounded-lg bg-card/70 px-3 text-sm text-fg ring-1 ring-border shadow-crisp outline-none transition focus:ring-2 focus:ring-accent/35"
+              >
+                <option value="axe">Machado</option>
+                <option value="shield">Escudo</option>
               </select>
             </label>
           </CardContent>
