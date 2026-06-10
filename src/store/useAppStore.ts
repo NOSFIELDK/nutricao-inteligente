@@ -41,6 +41,8 @@ type AppState = {
   customTargets: NutritionTargets | null;
   highContrast: boolean;
   fontScale: FontScale;
+  mascotStyle: "crafted" | "blocky";
+  mascotSize: "sm" | "md" | "lg";
   syncDirty: Partial<Record<"profile" | "plan" | "tracking" | "prefs", boolean>>;
   syncLastSyncedAt: Partial<Record<"profile" | "plan" | "tracking" | "prefs", string>>;
 
@@ -77,6 +79,8 @@ type AppState = {
 
   setHighContrast: (enabled: boolean) => void;
   setFontScale: (scale: FontScale) => void;
+  setMascotStyle: (style: "crafted" | "blocky") => void;
+  setMascotSize: (size: "sm" | "md" | "lg") => void;
 
   setReminderEnabled: (id: string, enabled: boolean) => void;
   setReminderInterval: (id: string, interval: ReminderInterval) => void;
@@ -105,6 +109,8 @@ export const useAppStore = create<AppState>()(
       customTargets: null,
       highContrast: false,
       fontScale: "100",
+      mascotStyle: "crafted",
+      mascotSize: "md",
       syncDirty: {},
       syncLastSyncedAt: {},
 
@@ -279,6 +285,8 @@ export const useAppStore = create<AppState>()(
       setHighContrast: (enabled) => set((s) => ({ highContrast: enabled, syncDirty: { ...s.syncDirty, prefs: true } })),
 
       setFontScale: (scale) => set((s) => ({ fontScale: scale, syncDirty: { ...s.syncDirty, prefs: true } })),
+      setMascotStyle: (style) => set((s) => ({ mascotStyle: style, syncDirty: { ...s.syncDirty, prefs: true } })),
+      setMascotSize: (size) => set((s) => ({ mascotSize: size, syncDirty: { ...s.syncDirty, prefs: true } })),
 
       setReminderEnabled: (id, enabled) =>
         set((s) => ({
@@ -340,11 +348,13 @@ export const useAppStore = create<AppState>()(
           }));
           return;
         }
-        const d = data as Partial<Pick<AppState, "reminders" | "highContrast" | "fontScale">>;
+        const d = data as Partial<Pick<AppState, "reminders" | "highContrast" | "fontScale" | "mascotStyle" | "mascotSize">>;
         set((s) => ({
           reminders: d.reminders ?? s.reminders,
           highContrast: typeof d.highContrast === "boolean" ? d.highContrast : s.highContrast,
           fontScale: d.fontScale ?? s.fontScale,
+          mascotStyle: d.mascotStyle ?? s.mascotStyle,
+          mascotSize: d.mascotSize ?? s.mascotSize,
           syncDirty: { ...s.syncDirty, prefs: false },
           syncLastSyncedAt: { ...s.syncLastSyncedAt, prefs: updatedAt },
         }));
@@ -352,7 +362,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEYS.state,
-      version: 8,
+      version: 9,
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState>;
         return {
@@ -371,6 +381,8 @@ export const useAppStore = create<AppState>()(
           customTargets: version < 5 ? null : state.customTargets ?? null,
           highContrast: version < 5 ? false : state.highContrast ?? false,
           fontScale: version < 5 ? "100" : state.fontScale ?? "100",
+          mascotStyle: version < 9 ? "crafted" : state.mascotStyle ?? "crafted",
+          mascotSize: version < 9 ? "md" : state.mascotSize ?? "md",
           syncDirty: version < 6 ? {} : state.syncDirty ?? {},
           syncLastSyncedAt: version < 6 ? {} : state.syncLastSyncedAt ?? {},
         };
@@ -391,6 +403,8 @@ export const useAppStore = create<AppState>()(
         customTargets: state.customTargets,
         highContrast: state.highContrast,
         fontScale: state.fontScale,
+        mascotStyle: state.mascotStyle,
+        mascotSize: state.mascotSize,
         syncDirty: state.syncDirty,
         syncLastSyncedAt: state.syncLastSyncedAt,
       }),

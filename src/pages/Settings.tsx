@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { createBackup, resetAll, restoreBackup } from "@/storage/backup";
 import { STORAGE_KEYS } from "@/storage/keys";
 import { useAppStore } from "@/store/useAppStore";
+import { LeifMascot } from "@/components/LeifMascot";
 import { addDaysISO, mealSlotLabel, todayISO } from "@/utils/date";
 import { catalog } from "@/data/catalog";
 import { getItem, itemTitle } from "@/domain/catalog";
@@ -75,6 +76,10 @@ export default function SettingsPage() {
   const setHighContrast = useAppStore((s) => s.setHighContrast);
   const fontScale = useAppStore((s) => s.fontScale);
   const setFontScale = useAppStore((s) => s.setFontScale);
+  const mascotStyle = useAppStore((s) => s.mascotStyle);
+  const setMascotStyle = useAppStore((s) => s.setMascotStyle);
+  const mascotSize = useAppStore((s) => s.mascotSize);
+  const setMascotSize = useAppStore((s) => s.setMascotSize);
 
   const reminders = useAppStore((s) => s.reminders);
   const setReminderEnabled = useAppStore((s) => s.setReminderEnabled);
@@ -602,6 +607,42 @@ export default function SettingsPage() {
                 <option value="100">Padrão</option>
                 <option value="112">Maior</option>
                 <option value="125">Muito maior</option>
+              </select>
+            </label>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Mascote (Leif)</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="flex items-center justify-center rounded-xl bg-card-2/40 p-4 ring-1 ring-border">
+              <div className="h-28 w-24">
+                <LeifMascot variant="full" mood="celebrate" style={mascotStyle} animated className="h-full w-full" />
+              </div>
+            </div>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-medium text-fg/90">Estilo</span>
+              <select
+                value={mascotStyle}
+                onChange={(e) => setMascotStyle(e.target.value as "crafted" | "blocky")}
+                className="h-11 w-full appearance-none rounded-lg bg-card/70 px-3 text-sm text-fg ring-1 ring-border shadow-crisp outline-none transition focus:ring-2 focus:ring-accent/35"
+              >
+                <option value="crafted">Clássico (vetorial)</option>
+                <option value="blocky">Blocky (pixel)</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-medium text-fg/90">Tamanho</span>
+              <select
+                value={mascotSize}
+                onChange={(e) => setMascotSize(e.target.value as "sm" | "md" | "lg")}
+                className="h-11 w-full appearance-none rounded-lg bg-card/70 px-3 text-sm text-fg ring-1 ring-border shadow-crisp outline-none transition focus:ring-2 focus:ring-accent/35"
+              >
+                <option value="sm">Pequeno</option>
+                <option value="md">Médio</option>
+                <option value="lg">Grande</option>
               </select>
             </label>
           </CardContent>
