@@ -1,6 +1,9 @@
 name = "nutricao-inteligente-api"
 main = "src/index.ts"
 compatibility_date = "2026-06-01"
+# Fixar o account_id evita a consulta /memberships, que falha com
+# API tokens sem permissão Memberships:Read (erro de auth 10000 no CI).
+account_id = "e706f01211f4b32d4def7694b09ce5dd"
 
 [vars]
 MEALDB_BASE = "https://www.themealdb.com/api/json/v1/1"
