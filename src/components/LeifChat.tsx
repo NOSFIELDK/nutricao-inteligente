@@ -54,6 +54,10 @@ export function LeifChat() {
   const [error, setError] = React.useState<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
+  const mascotStyle = useAppStore((s) => s.mascotStyle);
+  const mascotSize = useAppStore((s) => s.mascotSize);
+  const btnSize = mascotSize === "sm" ? "h-12 w-12" : mascotSize === "lg" ? "h-16 w-16" : "h-14 w-14";
+  const btnAvatar = mascotSize === "sm" ? "h-8 w-8" : mascotSize === "lg" ? "h-12 w-12" : "h-10 w-10";
 
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -98,15 +102,16 @@ export function LeifChat() {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Fechar chat do Leif" : "Abrir chat do Leif"}
         className={cn(
-          "fixed right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent shadow-soft ring-2 ring-gold/40 transition-transform duration-200 hover:scale-105 active:scale-95",
+          "fixed right-4 z-50 flex items-center justify-center rounded-full bg-accent shadow-soft ring-2 ring-gold/40 transition-transform duration-200 hover:scale-105 active:scale-95",
+          btnSize,
           "bottom-24 md:bottom-6",
         )}
       >
         {open ? (
           <X className="h-6 w-6 text-fg" />
         ) : (
-          <div className="h-10 w-10 overflow-hidden rounded-full">
-            <LeifMascot variant="avatar" mood="motivate" animated className="h-full w-full" />
+          <div className={cn(btnAvatar, "overflow-hidden rounded-full")}>
+            <LeifMascot variant="avatar" mood="motivate" style={mascotStyle} animated className="h-full w-full" />
           </div>
         )}
       </button>
@@ -122,7 +127,7 @@ export function LeifChat() {
           {/* Cabeçalho */}
           <div className="flex items-center gap-3 border-b border-border/70 bg-card-2/40 px-4 py-3">
             <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full ring-2 ring-gold/40">
-              <LeifMascot variant="avatar" mood={loading ? "motivate" : "normal"} animated className="h-full w-full" />
+              <LeifMascot variant="avatar" mood={loading ? "motivate" : "normal"} style={mascotStyle} animated className="h-full w-full" />
             </div>
             <div className="min-w-0">
               <div className="font-display text-sm font-bold tracking-wide text-fg">Leif IA</div>

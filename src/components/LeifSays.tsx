@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LeifMascot, type LeifMood } from "@/components/LeifMascot";
+import { useAppStore } from "@/store/useAppStore";
 
 const MOOD_STYLES: Record<LeifMood, string> = {
   normal:    "ring-gold/30 bg-bone/40",
@@ -27,7 +28,9 @@ type LeifSaysProps = {
 };
 
 export function LeifSays({ message, mood = "normal", size = "md", className }: LeifSaysProps) {
-  const imgSize = size === "sm" ? "h-10 w-10" : size === "lg" ? "h-16 w-16" : "h-12 w-12";
+  const mascotStyle = useAppStore((s) => s.mascotStyle);
+  const mascotSize = useAppStore((s) => s.mascotSize);
+  const imgSize = mascotSize === "sm" ? "h-9 w-9" : mascotSize === "lg" ? "h-14 w-14" : "h-11 w-11";
   const textSize = size === "sm" ? "text-xs" : size === "lg" ? "text-base" : "text-sm";
 
   return (
@@ -35,7 +38,7 @@ export function LeifSays({ message, mood = "normal", size = "md", className }: L
       {/* Leif */}
       <div className="flex-shrink-0">
         <div className={cn(imgSize, "overflow-hidden rounded-full ring-2 ring-gold/50 shadow-crisp bg-card/60")}>
-          <LeifMascot variant="avatar" mood={mood} animated className="h-full w-full" />
+          <LeifMascot variant="avatar" mood={mood} style={mascotStyle} animated className="h-full w-full" />
         </div>
       </div>
 
@@ -74,10 +77,13 @@ export function LeifEmptyState({
   message: string;
   mood?: LeifMood;
 }) {
+  const mascotStyle = useAppStore((s) => s.mascotStyle);
+  const mascotSize = useAppStore((s) => s.mascotSize);
+  const box = mascotSize === "sm" ? "h-28 w-24" : mascotSize === "lg" ? "h-44 w-36" : "h-36 w-28";
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl bg-card/80 p-8 ring-1 ring-border shadow-crisp animate-fade-up">
-      <div className="h-36 w-28">
-        <LeifMascot variant="full" mood={mood} animated className="h-full w-full" />
+      <div className={box}>
+        <LeifMascot variant="full" mood={mood} style={mascotStyle} animated className="h-full w-full" />
       </div>
       <div className="text-center">
         <div className="font-display text-lg font-bold text-fg">{title}</div>
