@@ -37,9 +37,9 @@ Extras: testes/CI · dark mode · export/import · macros via API (TACO/USDA)
 - **Aceite:** ✅ progresso de 7/30 dias em peso, proteína, kcal e aderência. Build/lint/testes verdes.
 
 ## Fase 3 — Gerador de plano semanal
-- [ ] `domain/plan/generate.ts`: algoritmo guloso aproximando kcal/proteína, respeitando
-      preferências/restrições, sem repetir receita em dias seguidos. Reusa `recommendCatalog`.
-- [ ] `pages/Plan.tsx`: "Gerar semana", preview, regenerar dia, aceitar/descartar.
+- [x] `domain/plan/generate.ts`: algoritmo guloso aproximando kcal/proteína, respeitando
+      preferências/restrições, sem repetir receita em dias seguidos. Reusa `recommendCatalog`. (PR #49)
+- [x] `pages/Plan.tsx`: "Gerar semana", preview, regenerar dia, aceitar/descartar. (PR #49)
 - [ ] Testes do gerador (restrições + aproximação de metas).
 - **Aceite:** 1 clique → 7 dias coerentes com metas e restrições, editáveis.
 
@@ -67,7 +67,7 @@ Extras: testes/CI · dark mode · export/import · macros via API (TACO/USDA)
 - [x] Estilo blocky/clássico + tamanho (P/M/G) configuráveis em Ajustes (preview ao vivo).
 - [x] Leif em telas: Painel, Insights, Receitas, Compras, Histórico, Plano, hero da página Sobre, loading e 404.
 - [x] Leif comemora: aderência 100% no Painel, saque completo em Compras.
-- [ ] **Pose "hero"** (mais dinâmica) + **escudo** como item alternativo ao machado, com variação por humor.
+- [x] **Pose "hero"** (arma erguida + sombra) + **escudo** como item (machado/escudo) configurável em Ajustes.
 
 ## Leif IA (chat de nutrição)
 - [x] Worker: endpoint `POST /api/leif/chat` (Workers AI `@cf/meta/llama-3.1-8b-instruct`), persona + contexto do usuário.
@@ -78,7 +78,7 @@ Extras: testes/CI · dark mode · export/import · macros via API (TACO/USDA)
 - [x] "Hoje" com checklist do dia (água, proteína, fibras, check-in, peso) + barra de progresso.
 - [x] Resumo semanal: streak (dias seguidos batendo meta) + bolinhas dos 7 dias + medalhas (🥉3d/🥈7d/🥇14d/🏆30d).
 - [x] Cards de métrica clicáveis com modais de detalhe (via Trae).
-- [ ] Cards de correlação simples: humor/fome/sono vs aderência e proteína.
+- [x] Cards de correlação simples: humor/fome/sono vs aderência e proteína. (PR #47)
 
 ## Histórico
 - [x] Calendário mensal com bolinhas (água/meta/check-in/peso); clicar no dia abre o detalhe.
@@ -87,12 +87,12 @@ Extras: testes/CI · dark mode · export/import · macros via API (TACO/USDA)
 ## Plano
 - [x] "Trocar" receita mantendo macros (proteína pesa mais; evita repetir no dia).
 - [x] Lista de compras inteligente: agrupar por categoria (hortifrúti/proteínas/laticínios/grãos/temperos/outros) + quantidade.
-- [ ] "Gerar semana" mais forte: gerador guloso aproximando metas, regenerar dia, aceitar/descartar (ver Fase 3).
+- [x] "Gerar semana" mais forte: gerador guloso aproximando metas, regenerar dia, aceitar/descartar. (PR #49)
 
 ## Insights / saúde
-- [ ] Alertas mais "clínicos": fibra baixa, proteína baixa, água baixa; sódio/açúcar alto a partir de rótulos.
+- [x] Alertas mais "clínicos": fibra baixa, proteína baixa, água baixa; sódio/açúcar alto a partir de rótulos. (PR #46)
 - [ ] Gráficos na página Insights (RingChart de macros do dia).
 
 ## Conta / sync
-- [ ] Tela "Status da nuvem": último sync, itens pendentes, botão "forçar sync".
+- [x] Tela "Status da nuvem": último sync, itens pendentes, botão "forçar sync". (PR #48)
 - [ ] Worker staging/prod separados + logs mínimos (sem dados sensíveis).
