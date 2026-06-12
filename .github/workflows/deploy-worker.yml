@@ -38,6 +38,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
+          wranglerVersion: "4.100.0"
           command: d1 execute nutricao-inteligente --file=./migrations/0001_auth_sync.sql --remote
 
       - name: Apply migrations (D1) 0002
@@ -46,6 +47,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
+          wranglerVersion: "4.100.0"
           command: d1 execute nutricao-inteligente --file=./migrations/0002_oauth_email.sql --remote
 
       - name: Apply migrations (D1) 0003
@@ -54,6 +56,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
+          wranglerVersion: "4.100.0"
           command: d1 execute nutricao-inteligente --file=./migrations/0003_sync_items.sql --remote
 
       # Deploy simples: o script + bindings vêm do wrangler.toml.
@@ -61,9 +64,12 @@ jobs:
       # necessários, são definidos uma vez via `wrangler secret put` (fora do CI)
       # e persistem entre deploys. Não subimos secrets aqui para evitar
       # chamadas extras à API (rate limit) e falhas com valores vazios.
+      # wrangler v4: o upload usa o endpoint novo de versões, evitando o
+      # fluxo legado /workers/services que vinha sendo estrangulado (10429).
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cf-worker
+          wranglerVersion: "4.100.0"
           command: deploy
