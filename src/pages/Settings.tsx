@@ -493,7 +493,7 @@ export default function SettingsPage() {
             </div>
             <TextField
               label="Base URL"
-              placeholder="Ex.: https://nutricao-inteligente-api.seuusuario.workers.dev"
+              placeholder="Ex.: https://leifnutri-api.seuusuario.workers.dev"
               value={apiBase}
               onChange={(e) => setApiBase(e.target.value)}
             />
