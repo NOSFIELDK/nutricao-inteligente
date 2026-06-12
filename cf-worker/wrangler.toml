@@ -1,4 +1,4 @@
-name = "nutricao-inteligente-api"
+name = "leifnutri-api"
 main = "src/index.ts"
 compatibility_date = "2026-06-01"
 # Fixar o account_id evita a consulta /memberships, que falha com
